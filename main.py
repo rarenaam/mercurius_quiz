@@ -229,17 +229,6 @@ def opslaan_vragen(nieuwe_vragen: list = Body(...)) -> dict:
         return {"status": "error", "melding": str(e)}
 
 # ── WebSocket Handlers ───────────────────────────────────────────────────────
-@app.websocket("/ws/beamer")
-async def ws_beamer(websocket: WebSocket) -> None:
-    await websocket.accept()
-    beamer_ws.append(websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        if websocket in beamer_ws:
-            beamer_ws.remove(websocket)
-
 @app.websocket("/ws/speler")
 async def ws_speler(websocket: WebSocket) -> None:
     await websocket.accept()
@@ -252,9 +241,21 @@ async def ws_speler(websocket: WebSocket) -> None:
 
             if actie == "aanmelden":
                 nickname = data.get("naam", "").strip()[:15]
-                if not nickname or nickname in spelers:
+                # We controleren nu alleen nog of de naam niet leeg is
+                if not nickname:
                     await websocket.close(code=1008)
                     return
+                
+                # 💡 DE FIX: Als de naam al in de lijst staat (omdat de 10 sec timer nog loopt)
+                # dan sluiten we de oude, vastgelopen websocket en overschrijven we hem.
+                if nickname in spelers:
+                    oude_ws = spelers[nickname]
+                    try:
+                        await oude_ws.close(code=1000)  # Sluit de oude socket netjes af
+                    except Exception:
+                        pass  # Als hij al écht dood was, negeer de foutmelding
+                
+                # Koppel de nieuwe websocket aan de speler
                 spelers[nickname] = websocket
                 quiz["scores"].setdefault(nickname, 0)
                 await update_admin_dashboard()
@@ -270,8 +271,16 @@ async def ws_speler(websocket: WebSocket) -> None:
 
     except WebSocketDisconnect:
         if nickname:
-            spelers.pop(nickname, None)
-        await update_admin_dashboard()
+            # Wacht eerst 10 seconden of de speler weer terug online komt
+            await asyncio.sleep(10)
+            
+            # Controleer of de websocket in 'spelers' nog steeds exact deze oude, gebroken verbinding is.
+            # Als de speler tussendoor is herverbonden, heeft hij een nieuwe websocket gekregen en doen we niks!
+            if nickname in spelers and spelers[nickname] == websocket:
+                spelers.pop(nickname, None)
+                # EXTRA: Update het dashboard zodat de admin ziet dat de speler echt weg is
+                await update_admin_dashboard()
+
 
 @app.websocket("/ws/admin")
 async def ws_admin(websocket: WebSocket) -> None:
