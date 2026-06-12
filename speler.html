@@ -246,7 +246,7 @@
 
     // Voeg hier de skip-header toe als we een fetch doen voor de rest van de data
     // Voor de WebSocket zelf gebruiken we de URL-parameter:
-    const wsUrl = `${protocol}//${location.host}/ws/speler?ngrok-skip-browser-warning=true`;
+    const wsUrl = `${protocol}//${location.host}/ws/speler`;
 
     ws = new WebSocket(wsUrl);
 
