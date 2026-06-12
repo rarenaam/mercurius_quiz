@@ -422,6 +422,14 @@
         document.getElementById("game-timer").textContent = "KIES NU! 🔥";
         break;
 
+      case "al_geantwoord":
+        // Opgevangen status wanneer een speler herverbindt nadat hij al geklikt had
+        const fVeldBezet = document.getElementById("feedback-veld");
+        fVeldBezet.className = "feedback-box neutral";
+        fVeldBezet.textContent = "Antwoord hersteld! Wachten op resultaat…";
+        switchScherm("resultaat");
+        break;
+
       case "ronde_uitslag":
         const fVeld = document.getElementById("feedback-veld");
         if (data.was_correct) {
@@ -434,8 +442,14 @@
         switchScherm("resultaat");
         break;
 
+      case "quiz_afgelopen":
+        const fVeldEind = document.getElementById("feedback-veld");
+        fVeldEind.className = "feedback-box correct";
+        fVeldEind.textContent = `🚀 Quiz afgelopen! Totale score: ${huidigeScore} pt`;
+        switchScherm("resultaat");
+        break;
+
       case "quiz_reset":
-        // Wis herinnering bij een harde quiz reset
         localStorage.removeItem("quiz_nickname");
         mijnNaam = "";
         document.getElementById("nickname-input").value = "";
@@ -444,7 +458,6 @@
         break;
     }
   }
-
   /* ── Antwoord verzenden ─────────────────────────────────────────── */
   function stuurAntwoord(keuzeIndex) {
     if (heeftGeklikt || !ws || ws.readyState !== WebSocket.OPEN) return;
