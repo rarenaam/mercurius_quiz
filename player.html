@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mercurius – Speler Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #060b18;
+      --surface:   #0e1629;
+      --border:    #1e2d4d;
+      --accent:    #4f8ef7;
+      --accent2:   #a78bfa;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --font-ui:   'Space Grotesk', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+
+      /* Premium Kahoot Kleuren met Neon Glow potentie */
+      --kh-red:    #e21b3c;
+      --kh-blue:   #1368ce;
+      --kh-yellow: #d89e00;
+      --kh-green:  #26890c;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 1.5rem;
+    }
+
+    /* ── Stars background ──────────────────────────────────────────────── */
+    #sterren {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    }
+    .ster {
+      position: absolute; border-radius: 50%; background: white;
+      animation: twinkle var(--d, 3s) ease-in-out infinite; opacity: 0;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; }
+      50%       { opacity: var(--op, 0.7); }
+    }
+
+    /* ── Layout Container ──────────────────────────────────────────────── */
+    #app {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 480px;
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+
+    /* ── Logo ──────────────────────────────────────────────────────────── */
+    .logo { text-align: center; }
+    .logo-icon { font-size: 2.5rem; filter: drop-shadow(0 0 20px #4f8ef780); }
+    .logo h1 {
+      font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .logo p { font-size: 0.8rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.2rem; }
+
+    /* ── Cards & Schermen ──────────────────────────────────────────────── */
+    .card {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1.25rem; padding: 2rem; box-shadow: 0 0 40px #4f8ef710;
+    }
+    .scherm { display: none; flex-direction: column; gap: 1.5rem; }
+    .scherm.actief { display: flex; }
+
+    /* ── Inputs & Form Buttons ─────────────────────────────────────────── */
+    .veld-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; display: block; text-align: center; }
+    .form-input {
+      width: 100%; padding: 0.85rem 1rem; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 0.6rem; color: white; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #4f8ef720; }
+
+    .btn-submit {
+      width: 100%; padding: 0.9rem 1.5rem; background: var(--accent); color: white; border: none;
+      border-radius: 0.6rem; font-size: 1rem; font-weight: 600; cursor: pointer; transition: transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px #4f8ef730;
+    }
+    .btn-submit:hover { background: #6ba3f9; box-shadow: 0 4px 24px #4f8ef750; }
+    .btn-submit:active { transform: scale(0.97); }
+
+    /* ── Status Badges & Info ────────────────────────────────────────── */
+    .header-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .score-badge { font-family: var(--font-mono); font-size: 1rem; color: var(--text); background: var(--surface); padding: 0.4rem 1rem; border-radius: 2rem; border: 1px solid var(--border); }
+    .status-text { font-size: 1.1rem; font-weight: 600; color: var(--text); text-align: center; }
+
+    /* ── Neon Kahoot Grid ──────────────────────────────────────────────── */
+    .pad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; height: 50vh; min-height: 320px; }
+    .pad-btn {
+      border: none; border-radius: 1rem; color: white; font-size: 2.2rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: transform 0.1s, opacity 0.2s, box-shadow 0.2s;
+    }
+    .pad-btn:active { transform: scale(0.94); }
+    .pad-btn:disabled { opacity: 0.2; cursor: not-allowed; transform: none; box-shadow: none !important; }
+
+    .p1 { background: var(--kh-red); box-shadow: 0 4px 15px rgba(226, 27, 60, 0.3); }
+    .p2 { background: var(--kh-blue); box-shadow: 0 4px 15px rgba(19, 104, 206, 0.3); }
+    .p3 { background: var(--kh-yellow); box-shadow: 0 4px 15px rgba(216, 158, 0, 0.3); }
+    .p4 { background: var(--kh-green); box-shadow: 0 4px 15px rgba(38, 137, 12, 0.3); }
+
+    .p1:hover:not(:disabled) { box-shadow: 0 0 25px rgba(226, 27, 60, 0.6); }
+    .p2:hover:not(:disabled) { box-shadow: 0 0 25px rgba(19, 104, 206, 0.6); }
+    .p3:hover:not(:disabled) { box-shadow: 0 0 25px rgba(216, 158, 0, 0.6); }
+    .p4:hover:not(:disabled) { box-shadow: 0 0 25px rgba(38, 137, 12, 0.6); }
+
+    /* ── Feedback Glow Boxen ───────────────────────────────────────────── */
+    .feedback-box { padding: 2rem; border-radius: 1rem; font-size: 1.4rem; font-weight: 700; color: white; text-align: center; transition: all 0.3s; }
+    .feedback-box.neutral { background: var(--surface); border: 1px solid var(--border); }
+    .feedback-box.correct { background: var(--kh-green); box-shadow: 0 0 35px rgba(38, 137, 12, 0.6); }
+    .feedback-box.incorrect { background: var(--kh-red); box-shadow: 0 0 35px rgba(226, 27, 60, 0.6); }
+
+    .subtekst { font-size: 0.85rem; color: var(--muted); text-align: center; }
+
+    /* ── Wacht animatie dots ────────────────────────────────────────────── */
+    .dots::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; } }
+  </style>
+</head>
+<body>
+
+<div id="sterren"></div>
+
+<div id="app">
+
+  <div class="logo">
+    <div class="logo-icon">🔭</div>
+    <h1>Sterrenwacht Mercurius</h1>
+    <p>Quiz Panel</p>
+  </div>
+
+  <div id="scherm-login" class="card scherm actief">
+    <div>
+      <label class="veld-label" for="nickname-input">Jouw Spelersnaam</label>
+      <input type="text" id="nickname-input" class="form-input" placeholder="bv. Jupiter" maxlength="15" autocomplete="off" autofocus>
+    </div>
+    <button class="btn-submit" id="verbindenKnop" onclick="deelnameBevestigen()">Lanceer Speler!</button>
+  </div>
+
+  <div id="scherm-wachten" class="card scherm">
+    <div style="text-align: center;">
+      <p style="font-size: 1.3rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem;">In de lobby... 🚀</p>
+      <p class="subtekst dots">Houd het hoofdscherm in de gaten. De ronde start zo</p>
+    </div>
+    <div style="text-align: center;">
+      <span class="veld-label">Jouw score op dit moment</span>
+      <div id="speler-score-status" class="score-badge" style="display: inline-block; margin-top: 0.5rem;">0 pt</div>
+    </div>
+  </div>
+
+  <div id="scherm-spelen" class="scherm">
+    <div class="header-bar">
+      <span id="game-timer" style="font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: 0.05em;">Kijk naar het scherm!</span>
+      <div id="live-score" class="score-badge">0 pt</div>
+    </div>
+    <div class="pad-grid">
+      <button class="pad-btn p1" onclick="stuurAntwoord(0)">▲</button>
+      <button class="pad-btn p2" onclick="stuurAntwoord(1)">⬢</button>
+      <button class="pad-btn p3" onclick="stuurAntwoord(2)">●</button>
+      <button class="pad-btn p4" onclick="stuurAntwoord(3)">■</button>
+    </div>
+  </div>
+
+  <div id="scherm-resultaat" class="card scherm">
+    <div id="feedback-veld" class="feedback-box neutral">
+      Antwoord ontvangen!
+    </div>
+    <p class="subtekst dots">Wachten op de resultaten en de volgende vraag</p>
+  </div>
+
+</div>
+
+<script>
+  /* ── Genereer Sterrenhemel ────────────────────────────────────────── */
+  (function maakSterren() {
+    const container = document.getElementById("sterren");
+    for (let i = 0; i < 120; i++) {
+      const s = document.createElement("div");
+      s.className = "ster";
+      const size = Math.random() * 2.5 + 0.5;
+      s.style.cssText = `
+        width:${size}px; height:${size}px;
+        top:${Math.random()*100}%; left:${Math.random()*100}%;
+        --d:${(Math.random()*4+2).toFixed(1)}s;
+        --op:${(Math.random()*0.6+0.2).toFixed(2)};
+        animation-delay:${(Math.random()*5).toFixed(1)}s;
+      `;
+      container.appendChild(s);
+    }
+  })();
+
+  /* ── State ────────────────────────────────────────────────────────── */
+  let ws;
+  let mijnNaam = "";
+  let huidigeScore = 0;
+  let heeftGeklikt = false;
+
+  const schermen = {
+    login:     document.getElementById("scherm-login"),
+    wachten:   document.getElementById("scherm-wachten"),
+    spelen:    document.getElementById("scherm-spelen"),
+    resultaat: document.getElementById("scherm-resultaat")
+  };
+
+  function switchScherm(schermId) {
+    Object.values(schermen).forEach(s => s.classList.remove('actief'));
+    if (schermen[schermId]) schermen[schermId].classList.add('actief');
+  }
+
+  /* ── Enter-key support bij login ──────────────────────────────────── */
+  document.getElementById("nickname-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") deelnameBevestigen();
+  });
+
+  /* ── Flow & Verbinding ────────────────────────────────────────────── */
+  function deelnameBevestigen() {
+    const input = document.getElementById("nickname-input").value.trim();
+    if (!input) return alert("Vul eerst een naam in!");
+    mijnNaam = input;
+
+    const knop = document.getElementById("verbindenKnop");
+    knop.disabled = true;
+    knop.textContent = "Verbinden...";
+
+    verbindenMetServer();
+  }
+
+  function verbindenMetServer() {
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+
+    // Voeg hier de skip-header toe als we een fetch doen voor de rest van de data
+    // Voor de WebSocket zelf gebruiken we de URL-parameter:
+    const wsUrl = `${protocol}//${location.host}/ws/speler?ngrok-skip-browser-warning=true`;
+
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        console.log("Verbonden met server!");
+        ws.send(JSON.stringify({ actie: "aanmelden", naam: mijnNaam }));
+        switchScherm("wachten");
+    };
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      verwerkServerBericht(data);
+    };
+
+    ws.onclose = () => {
+      alert("Verbinding met de quizserver verbroken! Vernieuw de pagina.");
+      const knop = document.getElementById("verbindenKnop");
+      knop.disabled = false;
+      knop.textContent = "Lanceer Speler!";
+      switchScherm("login");
+    };
+  }
+
+  /* ── Berichtenverwerking (Volledig intact gelaten voor backend) ────── */
+  function verwerkServerBericht(data) {
+    // Score syncen indien meegestuurd
+    if (data.score !== undefined) {
+      huidigeScore = data.score;
+      document.getElementById("speler-score-status").textContent = `${huidigeScore} pt`;
+      document.getElementById("live-score").textContent = `${huidigeScore} pt`;
+    }
+
+    switch (data.actie) {
+      case "wachten":
+        switchScherm("wachten");
+        break;
+
+      case "vraag_voorbereiden":
+        heeftGeklikt = false;
+        // Knoppen weer activeren voor de nieuwe ronde
+        document.querySelectorAll('.pad-btn').forEach(b => b.disabled = false);
+        document.getElementById("game-timer").textContent = "Bereid je voor...";
+        switchScherm("spelen");
+        break;
+
+      case "timer_start":
+        document.getElementById("game-timer").textContent = "KIES NU! 🔥";
+        break;
+
+      case "ronde_uitslag":
+        const fVeld = document.getElementById("feedback-veld");
+        if (data.was_correct) {
+          fVeld.className = "feedback-box correct";
+          fVeld.textContent = `🎉 Correct! (+${data.behaalde_punten} pt)`;
+        } else {
+          fVeld.className = "feedback-box incorrect";
+          fVeld.textContent = tieneBericht(data.was_tijd_om);
+        }
+        switchScherm("resultaat");
+        break;
+
+      case "quiz_reset":
+        const knop = document.getElementById("verbindenKnop");
+        knop.disabled = false;
+        knop.textContent = "Lanceer Speler!";
+        switchScherm("login");
+        document.getElementById("nickname-input").value = "";
+        huidigeScore = 0;
+        break;
+    }
+  }
+
+  function tieneBericht(tijdOm) {
+    return tijdOm ? "⏱️ Te laat! De tijd is om." : "❌ Helaas, fout antwoord!";
+  }
+
+  /* ── Antwoord verzenden ───────────────────────────────────────────── */
+  function stuurAntwoord(keuzeIndex) {
+    if (heeftGeklikt) return;
+    heeftGeklikt = true;
+
+    // Blokkeer direct de knoppen tegen dubbelklikken
+    document.querySelectorAll('.pad-btn').forEach(b => b.disabled = true);
+
+    ws.send(JSON.stringify({
+      actie: "insturen_antwoord",
+      keuze: keuzeIndex
+    }));
+
+    const fVeld = document.getElementById("feedback-veld");
+    fVeld.className = "feedback-box neutral";
+    fVeld.textContent = "Antwoord opgeslagen! Wachten op resultaat...";
+    switchScherm("resultaat");
+  }
+</script>
+</body>
+</html>
