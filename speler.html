@@ -3,20 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mercurius – Beamer Display</title>
+  <title>Mercurius – Speler Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --bg:        #060b18;
       --surface:   #0e1629;
-      --surface2:  #131f38;
       --border:    #1e2d4d;
       --accent:    #4f8ef7;
       --accent2:   #a78bfa;
@@ -30,36 +26,15 @@
       --kh-green:  #26890c;
     }
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-ui);
-      overflow: hidden;
-    }
-
-    body {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 2rem;
-    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); overflow-x: hidden; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
 
     /* ── Sterrenhemel ──────────────────────────────────────────────── */
-    #sterren {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-    }
+    #sterren { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 
     .ster {
-      position: absolute;
-      border-radius: 50%;
-      background: white;
-      animation: twinkle var(--d, 3s) ease-in-out infinite;
-      opacity: 0;
+      position: absolute; border-radius: 50%; background: white;
+      animation: twinkle var(--d, 3s) ease-in-out infinite; opacity: 0;
     }
 
     @keyframes twinkle {
@@ -67,459 +42,437 @@
       50%       { opacity: var(--op, 0.7); }
     }
 
-    /* Grote, trage nevel-bollen op de achtergrond */
-    .nevel {
+    /* ── Planeet canvas ────────────────────────────────────────────── */
+    #planeet-canvas {
       position: fixed;
-      border-radius: 50%;
+      top: 50%;
+      left: -100px;
+      transform: translateY(-50%);
+      width: 340px;
+      height: 340px;
       pointer-events: none;
       z-index: 0;
-      filter: blur(80px);
-      animation: nebelDrift var(--nd, 20s) ease-in-out infinite alternate;
-    }
-    @keyframes nebelDrift {
-      0%   { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(var(--dx, 20px), var(--dy, 15px)) scale(1.05); }
+      opacity: 0.5;
     }
 
-    /* ── Inhoud boven sterren ───────────────────────────────────────── */
-    .beamer-container {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 1100px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      gap: 1.75rem;
+    /* ── App layout ────────────────────────────────────────────────── */
+    #app {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 480px;
+      display: flex; flex-direction: column; gap: 1.5rem;
     }
 
-    .vraag-titel {
-      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
-      font-weight: 700;
-      line-height: 1.3;
-      min-height: 72px;
-      color: white;
-      text-shadow: 0 2px 20px rgba(79, 142, 247, 0.4);
+    /* ── Logo ──────────────────────────────────────────────────────── */
+    .logo { text-align: center; }
+    .logo-icon { font-size: 2.5rem; filter: drop-shadow(0 0 20px #4f8ef780); }
+    .logo h1 {
+      font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
+    .logo p { font-size: 0.8rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.2rem; }
 
-    /* ── Antwoordgrid ──────────────────────────────────────────────── */
-    .antwoord-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.1rem;
-      width: 100%;
+    /* ── Cards & Schermen ──────────────────────────────────────────── */
+    .card {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1.25rem; padding: 2rem; box-shadow: 0 0 40px #4f8ef710;
     }
+    .scherm { display: none; flex-direction: column; gap: 1.5rem; }
+    .scherm.actief { display: flex; }
 
-    .vlak {
-      padding: 1.75rem;
-      border-radius: 0.85rem;
-      color: white;
-      font-weight: 700;
-      text-align: left;
-      font-size: clamp(1.1rem, 2vw, 1.6rem);
-      opacity: 0.9;
-      border: 5px solid transparent;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      /* Subtiele glinstering boven de kleur */
-      background-clip: padding-box;
+    /* ── Inputs & Knoppen ──────────────────────────────────────────── */
+    .veld-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; display: block; text-align: center; }
+    .form-input {
+      width: 100%; padding: 0.85rem 1rem; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 0.6rem; color: white; font-size: 1.1rem; text-align: center; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s; font-family: var(--font-ui);
     }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #4f8ef720; }
 
-    .vlak.correct {
-      border-color: white;
-      opacity: 1;
-      box-shadow: 0 0 40px rgba(255,255,255,0.3);
-      transform: scale(1.02);
+    .btn-submit {
+      width: 100%; padding: 0.9rem 1.5rem; background: var(--accent); color: white; border: none;
+      border-radius: 0.6rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: transform 0.1s, filter 0.15s; box-shadow: 0 4px 20px #4f8ef730;
+      font-family: var(--font-ui);
     }
+    .btn-submit:hover:not(:disabled)  { filter: brightness(1.1); }
+    .btn-submit:active:not(:disabled) { transform: scale(0.97); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .vlak.incorrect {
-      opacity: 0.18;
-      transform: scale(0.98);
-      filter: blur(1px);
+    /* ── Status ────────────────────────────────────────────────────── */
+    .header-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .score-badge { font-family: var(--font-mono); font-size: 1rem; background: var(--surface); padding: 0.4rem 1rem; border-radius: 2rem; border: 1px solid var(--border); }
+
+    /* ── Antwoordknoppen ───────────────────────────────────────────── */
+    .pad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; height: 50vh; min-height: 320px; }
+    .pad-btn {
+      border: none; border-radius: 1rem; color: white; font-size: 2.2rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.1s, filter 0.15s;
     }
+    .pad-btn:active:not(:disabled) { transform: scale(0.94); }
+    .pad-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+    .p1 { background: var(--kh-red);    box-shadow: 0 4px 20px rgba(226,27,60,0.35); }
+    .p2 { background: var(--kh-blue);   box-shadow: 0 4px 20px rgba(19,104,206,0.35); }
+    .p3 { background: var(--kh-yellow); box-shadow: 0 4px 20px rgba(216,158,0,0.35); }
+    .p4 { background: var(--kh-green);  box-shadow: 0 4px 20px rgba(38,137,12,0.35); }
+    .p1:hover:not(:disabled) { filter: brightness(1.15); }
+    .p2:hover:not(:disabled) { filter: brightness(1.15); }
+    .p3:hover:not(:disabled) { filter: brightness(1.15); }
+    .p4:hover:not(:disabled) { filter: brightness(1.15); }
 
-    .v1 { background: var(--kh-red);    box-shadow: 0 4px 20px rgba(226,27,60,0.35); }
-    .v2 { background: var(--kh-blue);   box-shadow: 0 4px 20px rgba(19,104,206,0.35); }
-    .v3 { background: var(--kh-yellow); box-shadow: 0 4px 20px rgba(216,158,0,0.35); }
-    .v4 { background: var(--kh-green);  box-shadow: 0 4px 20px rgba(38,137,12,0.35); }
+    /* ── Feedback ──────────────────────────────────────────────────── */
+    .feedback-box { padding: 2rem; border-radius: 1rem; font-size: 1.4rem; font-weight: 700; color: white; text-align: center; transition: all 0.3s; }
+    .feedback-box.neutral   { background: var(--surface); border: 1px solid var(--border); }
+    .feedback-box.correct   { background: var(--kh-green); box-shadow: 0 0 35px rgba(38,137,12,0.6); }
+    .feedback-box.incorrect { background: var(--kh-red);   box-shadow: 0 0 35px rgba(226,27,60,0.6); }
 
-    /* ── Grafiek ───────────────────────────────────────────────────── */
-    .chart-box {
-      max-width: 520px;
-      width: 100%;
-      margin: 0 auto;
-      background: rgba(14, 22, 41, 0.85);
-      backdrop-filter: blur(8px);
-      padding: 1.25rem;
-      border-radius: 1rem;
-      border: 1px solid var(--border);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
+    .subtekst { font-size: 0.85rem; color: var(--muted); text-align: center; }
 
-    /* ── Podium ────────────────────────────────────────────────────── */
-    @keyframes growPodium {
-      from { height: 0; }
-    }
-
-    .podium-container {
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      gap: 1.5rem;
-      margin: 1.5rem auto 0;
-      height: 230px;
-      width: 100%;
-      max-width: 600px;
-    }
-
-    .podium-column {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      flex: 1;
-      text-align: center;
-    }
-
-    .podium-bar {
-      width: 100%;
-      border-top-left-radius: 0.8rem;
-      border-top-right-radius: 0.8rem;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 2.2rem;
-      font-weight: bold;
-      color: #02060f;
-      animation: growPodium 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-
-    .podium-1 { height: 165px; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 35px rgba(245,158,11,0.5); }
-    .podium-2 { height: 115px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
-    .podium-3 { height: 80px;  background: linear-gradient(135deg, #b45309, #78350f); }
-
-    .podium-name {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: white;
-      margin-bottom: 0.5rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 180px;
-      text-shadow: 0 1px 6px rgba(0,0,0,0.6);
-    }
-
-    .podium-score {
-      font-size: 1rem;
-      font-family: var(--font-mono);
-      color: var(--accent2);
-      margin-top: 0.4rem;
-      font-weight: 700;
-    }
-
-    /* ── Footer ────────────────────────────────────────────────────── */
-    .beamer-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 0.5rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid var(--border);
-      width: 100%;
-    }
-
-    .timer {
-      font-size: 2rem;
-      font-family: var(--font-mono);
-      color: var(--accent);
-      font-weight: 700;
-      transition: color 0.3s;
-      min-width: 80px;
-      text-align: left;
-    }
-
-    .timer.kritiek {
-      color: var(--kh-red);
-      animation: timerKnip 0.5s ease-in-out infinite;
-    }
-
-    @keyframes timerKnip {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
-    }
-
-    .teller     { font-size: 1.1rem; color: var(--muted); font-weight: 500; }
-    .lobby-code { font-size: 1.3rem; font-weight: 600; color: var(--accent2); min-width: 80px; text-align: right; }
+    .dots::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: ''; } }
   </style>
 </head>
 <body>
 
-<!-- Sterrenhemel achtergrond -->
 <div id="sterren"></div>
 
-<div class="beamer-container">
-  <div class="vraag-titel" id="display-vraag">Wachten op de quizmaster…</div>
+<!-- Planeet met ringen linkermidden -->
+<canvas id="planeet-canvas"></canvas>
 
-  <div class="antwoord-grid" id="display-grid">
-    <div class="vlak v1" id="optie0">▲ Rood vlak</div>
-    <div class="vlak v2" id="optie1">⬢ Blauw vlak</div>
-    <div class="vlak v3" id="optie2">● Geel vlak</div>
-    <div class="vlak v4" id="optie3">■ Groen vlak</div>
+<div id="app">
+
+  <div class="logo">
+    <div class="logo-icon">🔭</div>
+    <h1>Sterrenwacht Mercurius</h1>
+    <p>Quiz Panel</p>
   </div>
 
-  <div class="chart-box" id="chart-box" style="display:none;">
-    <canvas id="uitslagChart"></canvas>
+  <div id="scherm-login" class="card scherm actief">
+    <div>
+      <label class="veld-label" for="nickname-input">Jouw Spelersnaam</label>
+      <input type="text" id="nickname-input" class="form-input" placeholder="bv. Jupiter" maxlength="15" autocomplete="off" autofocus>
+    </div>
+    <button class="btn-submit" id="verbindenKnop" onclick="deelnameBevestigen()">Lanceer Speler!</button>
   </div>
 
-  <div id="podium-view" style="display:none; flex-direction:column; align-items:center; width:100%;"></div>
-
-  <div class="beamer-footer">
-    <div class="timer" id="display-timer"></div>
-    <div class="teller" id="display-teller"></div>
-    <div class="lobby-code" id="display-lobby-info"></div>
+  <div id="scherm-wachten" class="card scherm">
+    <div style="text-align:center;">
+      <p style="font-size:1.3rem; font-weight:700; color:var(--accent); margin-bottom:0.5rem;">In de lobby… 🚀</p>
+      <p class="subtekst dots">Houd het hoofdscherm in de gaten. De ronde start zo</p>
+    </div>
+    <div style="text-align:center;">
+      <span class="veld-label">Jouw score op dit moment</span>
+      <div id="speler-score-status" class="score-badge" style="display:inline-block; margin-top:0.5rem;">0 pt</div>
+    </div>
   </div>
+
+  <div id="scherm-spelen" class="scherm">
+    <div class="header-bar">
+      <span id="game-timer" style="font-weight:700; color:var(--accent2); text-transform:uppercase; letter-spacing:0.05em;">Kijk naar het scherm!</span>
+      <div id="live-score" class="score-badge">0 pt</div>
+    </div>
+    <div class="pad-grid">
+      <button class="pad-btn p1" onclick="stuurAntwoord(0)">▲</button>
+      <button class="pad-btn p2" onclick="stuurAntwoord(1)">⬢</button>
+      <button class="pad-btn p3" onclick="stuurAntwoord(2)">●</button>
+      <button class="pad-btn p4" onclick="stuurAntwoord(3)">■</button>
+    </div>
+  </div>
+
+  <div id="scherm-resultaat" class="card scherm">
+    <div id="feedback-veld" class="feedback-box neutral">Antwoord ontvangen!</div>
+    <p class="subtekst dots">Wachten op de resultaten en de volgende vraag</p>
+  </div>
+
 </div>
 
 <script>
-  /* ── Sterrenhemel genereren ──────────────────────────────────────── */
+  /* ── Sterrenhemel ───────────────────────────────────────────────── */
   (function maakSterren() {
     const container = document.getElementById("sterren");
-
-    // Nevels (grote, vage gloeiende bollen)
-    const nevels = [
-      { w: 500, h: 400, top: "5%",  left: "60%", kleur: "rgba(79,142,247,0.06)",  nd: "25s", dx: "30px",  dy: "20px" },
-      { w: 400, h: 350, top: "50%", left: "5%",  kleur: "rgba(167,139,250,0.05)", nd: "30s", dx: "-20px", dy: "25px" },
-      { w: 300, h: 300, top: "70%", left: "70%", kleur: "rgba(79,142,247,0.04)",  nd: "20s", dx: "15px",  dy: "-20px" },
-    ];
-
-    nevels.forEach(n => {
-      const el = document.createElement("div");
-      el.className = "nevel";
-      el.style.cssText = `
-        width:${n.w}px; height:${n.h}px;
-        top:${n.top}; left:${n.left};
-        background:${n.kleur};
-        --nd:${n.nd}; --dx:${n.dx}; --dy:${n.dy};
-      `;
-      container.appendChild(el);
-    });
-
-    // Sterren (veel meer op een beamerscherm)
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 120; i++) {
       const s = document.createElement("div");
       s.className = "ster";
-      const size = Math.random() * 2.8 + 0.4;
+      const size = Math.random() * 2.5 + 0.5;
       s.style.cssText = `
         width:${size}px; height:${size}px;
         top:${Math.random() * 100}%; left:${Math.random() * 100}%;
-        --d:${(Math.random() * 5 + 2).toFixed(1)}s;
-        --op:${(Math.random() * 0.7 + 0.2).toFixed(2)};
-        animation-delay:${(Math.random() * 6).toFixed(1)}s;
+        --d:${(Math.random() * 4 + 2).toFixed(1)}s;
+        --op:${(Math.random() * 0.6 + 0.2).toFixed(2)};
+        animation-delay:${(Math.random() * 5).toFixed(1)}s;
       `;
       container.appendChild(s);
     }
   })();
 
+  /* ── Planeet met ringen ─────────────────────────────────────────── */
+  (function tekenPlaneet() {
+    const canvas = document.getElementById("planeet-canvas");
+    const ctx    = canvas.getContext("2d");
+    const SIZE   = 340;
+    canvas.width  = SIZE;
+    canvas.height = SIZE;
+    const cx = SIZE / 2;
+    const cy = SIZE / 2;
+    const R  = 80;
+
+    const ringen = [
+      { binnen: R * 1.28, buiten: R * 1.60, alpha: 0.55, kleur: "140, 100, 200" },
+      { binnen: R * 1.65, buiten: R * 1.92, alpha: 0.38, kleur: "120, 80, 180"  },
+      { binnen: R * 1.97, buiten: R * 2.15, alpha: 0.20, kleur: "100, 60, 160"  },
+    ];
+
+    let t = 0;
+
+    function tekenRingGedeelte(achterVlak) {
+      ringen.forEach((ring) => {
+        ctx.save();
+        ctx.scale(1, 0.32);
+        ctx.beginPath();
+        ctx.arc(cx, cy / 0.32, ring.buiten, 0, Math.PI * 2, false);
+        ctx.arc(cx, cy / 0.32, ring.binnen, 0, Math.PI * 2, true);
+        ctx.fillStyle = `rgba(${ring.kleur}, ${ring.alpha})`;
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function frame() {
+      ctx.clearRect(0, 0, SIZE, SIZE);
+      t += 0.004;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, SIZE, cy);
+      ctx.clip();
+      tekenRingGedeelte(true);
+      ctx.restore();
+
+      const planeetGrad = ctx.createRadialGradient(cx - R * 0.25, cy - R * 0.22, R * 0.04, cx + R * 0.1, cy + R * 0.1, R);
+      planeetGrad.addColorStop(0,    "rgba(200, 160, 255, 1)");
+      planeetGrad.addColorStop(0.25, "rgba(150, 90, 230, 1)");
+      planeetGrad.addColorStop(0.55, "rgba(90, 40, 170, 1)");
+      planeetGrad.addColorStop(0.8,  "rgba(50, 20, 110, 1)");
+      planeetGrad.addColorStop(1,    "rgba(20, 8, 60, 1)");
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fillStyle = planeetGrad;
+      ctx.fill();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.clip();
+
+      const banden = [
+        { y: -0.30, breedte: 0.12, kleur: "rgba(180, 120, 255, 0.2)" },
+        { y:  0.05, breedte: 0.18, kleur: "rgba(100, 50, 200, 0.25)" },
+        { y:  0.40, breedte: 0.10, kleur: "rgba(160, 100, 240, 0.18)" },
+      ];
+
+      banden.forEach((b) => {
+        const bandY = cy + b.y * R;
+        const bandH = b.breedte * R;
+        const verschuiving = Math.sin(t * 0.3 + b.y * 5) * R * 0.08;
+        ctx.beginPath();
+        ctx.ellipse(cx + verschuiving, bandY, R * 1.05, bandH, 0, 0, Math.PI * 2);
+        ctx.fillStyle = b.kleur;
+        ctx.fill();
+      });
+
+      ctx.restore();
+
+      const hi = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx - R * 0.15, cy - R * 0.15, R * 0.6);
+      hi.addColorStop(0, "rgba(255, 255, 255, 0.2)");
+      hi.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fillStyle = hi;
+      ctx.fill();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, cy, SIZE, SIZE);
+      ctx.clip();
+      tekenRingGedeelte(false);
+      ctx.restore();
+
+      requestAnimationFrame(frame);
+    }
+    frame();
+  })();
+
   /* ── State ──────────────────────────────────────────────────────── */
   let ws;
-  let countdownInterval;
-  let chartInstance = null;
-  let actieveTijdLimiet = 0;
+  let mijnNaam    = "";
+  let huidigeScore = 0;
+  let heeftGeklikt = false;
+  let reconnectTimeout = null;
 
-  /* ── WebSocket Verbinding ───────────────────────────────────────── */
-  function verbinden() {
+  const schermen = {
+    login:     document.getElementById("scherm-login"),
+    wachten:   document.getElementById("scherm-wachten"),
+    spelen:    document.getElementById("scherm-spelen"),
+    resultaat: document.getElementById("scherm-resultaat"),
+  };
+
+  function switchScherm(id) {
+    Object.values(schermen).forEach(s => s.classList.remove("actief"));
+    if (schermen[id]) schermen[id].classList.add("actief");
+  }
+
+  function resetNaarLogin() {
+    const knop = document.getElementById("verbindenKnop");
+    knop.disabled    = false;
+    knop.textContent = "Lanceer Speler!";
+    switchScherm("login");
+  }
+
+  /* ── Enter-key support ──────────────────────────────────────────── */
+  document.getElementById("nickname-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") deelnameBevestigen();
+  });
+
+  /* ── Login & Verbinding ─────────────────────────────────────────── */
+  function deelnameBevestigen() {
+    const input = document.getElementById("nickname-input").value.trim();
+    if (!input) return;
+    
+    mijnNaam = input;
+    // Sla de naam op op de telefoon van de gebruiker
+    localStorage.setItem("quiz_nickname", mijnNaam);
+
+    const knop = document.getElementById("verbindenKnop");
+    knop.disabled    = true;
+    knop.textContent = "Verbinden…";
+
+    verbindenMetServer();
+  }
+
+  function verbindenMetServer() {
+    // Voorkom dubbele loops
+    clearTimeout(reconnectTimeout); 
+
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    ws = new WebSocket(`${protocol}//${location.host}/ws/beamer`);
+    ws = new WebSocket(`${protocol}//${location.host}/ws/speler`);
 
-    ws.onopen  = () => console.log("Beamer verbonden.");
-    ws.onmessage = (e) => {
-      try { verwerkBericht(JSON.parse(e.data)); }
-      catch(err) { console.error("Ongeldig bericht:", err); }
+    ws.onopen = () => {
+      console.log("Verbonden met server als:", mijnNaam);
+      ws.send(JSON.stringify({ actie: "aanmelden", naam: mijnNaam }));
+      // Als we al in een lopend spel zaten, zal de server snel de juiste status sturen.
+      // Voor nu gaan we even naar het wachtscherm.
+      switchScherm("wachten");
     };
-    ws.onclose = () => {
-      clearInterval(countdownInterval);
-      setTimeout(verbinden, 2000);
+
+    ws.onmessage = (e) => {
+      try { verwerkServerBericht(JSON.parse(e.data)); }
+      catch(err) { console.error("Berichtfout:", err); }
+    };
+
+    ws.onclose = (event) => {
+      console.log("Verbinding gesloten. Code:", event.code);
+      
+      // Code 1008 betekent dat de naam écht bezet/geweigerd is door de server
+      if (event.code === 1008) {
+        alert("Deze naam is al in gebruik of ongeldig. Kies een andere naam.");
+        localStorage.removeItem("quiz_nickname");
+        mijnNaam = "";
+        resetNaarLogin();
+        return;
+      }
+
+      // Als de speler een actieve naam heeft, proberen we stilzwijgend te herverbinden
+      if (mijnNaam) {
+        document.getElementById("game-timer").textContent = "🚀 Verbinding herstellen...";
+        const fVeld = document.getElementById("feedback-veld");
+        fVeld.className = "feedback-box neutral";
+        fVeld.textContent = "Signaal verloren. Automatisch herverbinden...";
+        
+        // Probeer het over 2 seconden opnieuw
+        reconnectTimeout = setTimeout(verbindenMetServer, 2000);
+      } else {
+        resetNaarLogin();
+      }
     };
   }
 
   /* ── Berichtenverwerking ────────────────────────────────────────── */
-  function verwerkBericht(data) {
-
-    if (data.actie === "status_update") {
-      if (data.status === "lobby") {
-        document.getElementById("display-vraag").textContent = "🚀 Welkom bij Mercurius Quiz! 🔭";
-        document.getElementById("display-lobby-info").textContent = `${location.host}`;
-        document.getElementById("display-teller").textContent = `Deelnemers in lobby: ${data.spelers.length}`;
-        document.getElementById("display-grid").style.display  = "grid";
-        document.getElementById("chart-box").style.display     = "none";
-        document.getElementById("podium-view").style.display   = "none";
-        document.getElementById("display-timer").textContent   = "";
-        document.getElementById("display-timer").classList.remove("kritiek");
-        resetVlakken();
-      }
-
-      if (data.status === "vraag_actief") {
-        document.getElementById("display-teller").textContent =
-          `Antwoorden: ${data.aantal_antwoorden} / ${data.spelers.length}`;
-      }
+  function verwerkServerBericht(data) {
+    if (data.score !== undefined) {
+      huidigeScore = data.score;
+      document.getElementById("speler-score-status").textContent = `${huidigeScore} pt`;
+      document.getElementById("live-score").textContent           = `${huidigeScore} pt`;
     }
 
-    if (data.actie === "toon_vraag") {
-      clearInterval(countdownInterval);
-      actieveTijdLimiet = Number(data.tijd);
+    switch (data.actie) {
+      case "wachten":
+        switchScherm("wachten");
+        break;
 
-      document.getElementById("display-grid").style.display  = "grid";
-      document.getElementById("chart-box").style.display     = "none";
-      document.getElementById("podium-view").style.display   = "none";
-      document.getElementById("display-lobby-info").textContent = "";
-      resetVlakken();
+      case "vraag_voorbereiden":
+        heeftGeklikt = false;
+        document.querySelectorAll(".pad-btn").forEach(b => b.disabled = false);
+        document.getElementById("game-timer").textContent = "Bereid je voor…";
+        switchScherm("spelen");
+        break;
 
-      document.getElementById("display-vraag").textContent  = data.vraag;
-      document.getElementById("optie0").textContent = "▲ " + (data.opties[0] || "");
-      document.getElementById("optie1").textContent = "⬢ " + (data.opties[1] || "");
-      document.getElementById("optie2").textContent = "● " + (data.opties[2] || "");
-      document.getElementById("optie3").textContent = "■ " + (data.opties[3] || "");
+      case "timer_start":
+        document.getElementById("game-timer").textContent = "KIES NU! 🔥";
+        break;
 
-      setTimer(`⌛ ${actieveTijdLimiet}s`, false);
-      document.getElementById("display-teller").textContent = "Bereid je voor…";
-    }
-
-    if (data.actie === "timer_loopt") {
-      let seconden = actieveTijdLimiet;
-      clearInterval(countdownInterval);
-      countdownInterval = setInterval(() => {
-        seconden--;
-        setTimer(`${seconden}s`, seconden <= 5);
-        if (seconden <= 0) clearInterval(countdownInterval);
-      }, 1000);
-    }
-
-    if (data.actie === "vraag_uitslag") {
-      clearInterval(countdownInterval);
-      setTimer("🛑", false);
-      document.getElementById("display-teller").textContent = "Ronde afgelopen!";
-
-      document.querySelectorAll('.vlak').forEach((v, idx) => {
-        v.classList.remove('correct', 'incorrect');
-        v.classList.add(idx === data.correct_index ? 'correct' : 'incorrect');
-      });
-
-      const counts = [0, 0, 0, 0];
-      if (data.antwoorden) {
-        Object.values(data.antwoorden).forEach(a => {
-          if (a.optie >= 0 && a.optie <= 3) counts[a.optie]++;
-        });
-      }
-      tekenGrafiek(counts);
-    }
-
-    if (data.actie === "eind_uitslag") {
-      clearInterval(countdownInterval);
-      document.getElementById("display-vraag").textContent = "👑 Eindresultaat Podium 👑";
-      setTimer("", false);
-      document.getElementById("display-teller").textContent = "";
-      document.getElementById("display-grid").style.display  = "none";
-      document.getElementById("chart-box").style.display     = "none";
-
-      const podiumView = document.getElementById("podium-view");
-      podiumView.style.display = "flex";
-      podiumView.innerHTML = bouwPodiumHtml(data.ranking);
-
-      confetti({ particleCount: 180, spread: 90, origin: { y: 0.6 } });
-    }
-  }
-
-  /* ── Timer Helper ───────────────────────────────────────────────── */
-  function setTimer(tekst, kritiek) {
-    const el = document.getElementById("display-timer");
-    el.textContent = tekst;
-    el.classList.toggle("kritiek", kritiek);
-  }
-
-  /* ── Podium HTML Builder ────────────────────────────────────────── */
-  function bouwPodiumHtml(ranking) {
-    if (!ranking || !ranking.length) return `<p style="color:var(--muted)">Geen deelnemers</p>`;
-
-    const plekken = [
-      { data: ranking[1], klasse: "podium-2", icon: "🥈", order: 1 },
-      { data: ranking[0], klasse: "podium-1", icon: "🥇", order: 2 },
-      { data: ranking[2], klasse: "podium-3", icon: "🥉", order: 3 },
-    ];
-
-    let html = '<div class="podium-container">';
-    plekken.forEach(({ data, klasse, icon, order }) => {
-      if (!data) return;
-      html += `
-        <div class="podium-column" style="order:${order}">
-          <div class="podium-name" title="${esc(data.naam)}">${esc(data.naam)}</div>
-          <div class="podium-bar ${klasse}">${icon}</div>
-          <div class="podium-score">${data.score} pt</div>
-        </div>`;
-    });
-    html += "</div>";
-
-    // Plek 4 & 5
-    if (ranking.length > 3) {
-      html += '<div style="margin-top:1.25rem; width:100%; max-width:420px; display:flex; flex-direction:column; gap:0.4rem;">';
-      ranking.slice(3, 5).forEach((s, i) => {
-        html += `
-          <div style="display:flex; justify-content:space-between; background:rgba(14,22,41,0.8); backdrop-filter:blur(6px); padding:0.5rem 1rem; border-radius:0.5rem; font-size:1rem; border:1px solid var(--border);">
-            <span style="font-weight:600;">#${i + 4} ${esc(s.naam)}</span>
-            <span style="color:var(--accent2); font-weight:700; font-family:var(--font-mono);">${s.score} pt</span>
-          </div>`;
-      });
-      html += "</div>";
-    }
-
-    return html;
-  }
-
-  /* ── Chart.js ───────────────────────────────────────────────────── */
-  function tekenGrafiek(counts) {
-    document.getElementById("chart-box").style.display = "block";
-    const ctx = document.getElementById("uitslagChart").getContext("2d");
-    if (chartInstance) chartInstance.destroy();
-
-    chartInstance = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: ["▲ Rood", "⬢ Blauw", "● Geel", "■ Groen"],
-        datasets: [{
-          data: counts,
-          backgroundColor: ["#e21b3c", "#1368ce", "#d89e00", "#26890c"],
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { stepSize: 1, color: "#64748b" },
-            grid: { color: "#1e2d4d" }
-          },
-          x: {
-            ticks: { color: "#e2e8f0", font: { weight: "bold", size: 14 } },
-            grid: { display: false }
-          }
+      case "ronde_uitslag":
+        const fVeld = document.getElementById("feedback-veld");
+        if (data.was_correct) {
+          fVeld.className = "feedback-box correct";
+          fVeld.textContent = `🎉 Correct! (+${data.behaalde_punten} pt)`;
+        } else {
+          fVeld.className   = "feedback-box incorrect";
+          fVeld.textContent = data.was_tijd_om ? "⏱️ Te laat! De tijd is om." : "❌ Helaas, fout antwoord!";
         }
-      }
-    });
+        switchScherm("resultaat");
+        break;
+
+      case "quiz_reset":
+        // Wis herinnering bij een harde quiz reset
+        localStorage.removeItem("quiz_nickname");
+        mijnNaam = "";
+        document.getElementById("nickname-input").value = "";
+        huidigeScore = 0;
+        resetNaarLogin();
+        break;
+    }
   }
 
-  /* ── Helpers ────────────────────────────────────────────────────── */
-  function resetVlakken() {
-    document.querySelectorAll('.vlak').forEach(v => v.classList.remove('correct', 'incorrect'));
+  /* ── Antwoord verzenden ─────────────────────────────────────────── */
+  function stuurAntwoord(keuzeIndex) {
+    if (heeftGeklikt || !ws || ws.readyState !== WebSocket.OPEN) return;
+    heeftGeklikt = true;
+
+    document.querySelectorAll(".pad-btn").forEach(b => b.disabled = true);
+    ws.send(JSON.stringify({ actie: "insturen_antwoord", keuze: keuzeIndex }));
+
+    const fVeld = document.getElementById("feedback-veld");
+    fVeld.className   = "feedback-box neutral";
+    fVeld.textContent = "Antwoord opgeslagen! Wachten op resultaat…";
+    switchScherm("resultaat");
   }
 
-  function esc(str) {
-    return String(str)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
-  verbinden();
+  /* ── Automatische Reconnect bij opstarten ────────────────────────── */
+  window.addEventListener("DOMContentLoaded", () => {
+    const opgeslagenNaam = localStorage.getItem("quiz_nickname");
+    if (opgeslagenNaam) {
+      mijnNaam = opgeslagenNaam;
+      document.getElementById("nickname-input").value = opgeslagenNaam;
+      
+      const knop = document.getElementById("verbindenKnop");
+      knop.disabled    = true;
+      knop.textContent = "Sessie herstellen...";
+      
+      verbindenMetServer();
+    }
+  });
 </script>
 </body>
 </html>
