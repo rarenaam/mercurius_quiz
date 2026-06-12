@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mercurius – Beamer Display</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #060b18;
+      --surface:   #0e1629;
+      --surface2:  #131f38;
+      --border:    #1e2d4d;
+      --accent:    #4f8ef7;
+      --accent2:   #a78bfa;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --font-ui:   'Space Grotesk', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+
+      /* Kahoot Kleuren */
+      --kh-red:    #e21b3c;
+      --kh-blue:   #1368ce;
+      --kh-yellow: #d89e00;
+      --kh-green:  #26890c;
+    }
+
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font-ui);
+      min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;
+      padding: 2rem; overflow: hidden;
+    }
+
+    .beamer-container {
+      width: 100%; max-width: 1100px; text-align: center; display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    .vraag-titel {
+      font-size: 2.5rem; font-weight: 700; line-height: 1.3; min-height: 80px;
+      color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    /* Antwoordopties Grid */
+    .antwoord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; width: 100%; }
+    .vlak {
+      padding: 2rem; border-radius: 0.75rem; color: white; font-weight: 700; text-align: left;
+      font-size: 1.6rem; opacity: 0.9; border: 6px solid transparent; transition: all 0.25s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .vlak.correct { border: 6px solid white; opacity: 1; box-shadow: 0 0 30px white; transform: scale(1.02); }
+    .vlak.incorrect { opacity: 0.2; transform: scale(0.98); filter: blur(1px); }
+    .v1 { background: var(--kh-red); } .v2 { background: var(--kh-blue); } .v3 { background: var(--kh-yellow); } .v4 { background: var(--kh-green); }
+
+    /* Live Grafiek Box */
+    .chart-box { max-width: 550px; width: 100%; margin: 0 auto; background: var(--surface); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+
+    /* 3D Podium */
+    @keyframes growPodium { from { height: 0px; } }
+    .podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 1.5rem; margin: 2rem auto 0 auto; height: 240px; width: 100%; max-width: 600px; }
+    .podium-column { display: flex; flex-direction: column; align-items: center; flex: 1; text-align: center; }
+    .podium-bar {
+      width: 100%; border-top-left-radius: 0.8rem; border-top-right-radius: 0.8rem;
+      display: flex; justify-content: center; align-items: center; font-size: 2.2rem; font-weight: bold; color: #02060f;
+      animation: growPodium 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .podium-1 { height: 170px; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); }
+    .podium-2 { height: 120px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+    .podium-3 { height: 85px; background: linear-gradient(135deg, #b45309, #78350f); }
+    .podium-name { font-size: 1.3rem; font-weight: 700; color: white; margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .podium-score { font-size: 1.1rem; font-family: var(--font-mono); color: var(--accent2); margin-top: 0.5rem; font-weight: 700; }
+
+    /* Footer Info */
+    .beamer-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border); width: 100%; }
+    .timer { font-size: 2.2rem; font-family: var(--font-mono); color: var(--accent); font-weight: 700; }
+    .teller { font-size: 1.2rem; color: var(--muted); font-weight: 500; }
+    .lobby-code { font-size: 1.5rem; font-weight: 600; color: var(--accent2); }
+  </style>
+</head>
+<body>
+
+<div class="beamer-container">
+  <div class="vraag-titel" id="display-vraag">Wachten op de quizmaster...</div>
+
+  <div class="antwoord-grid" id="display-grid">
+    <div class="vlak v1" id="optie0">▲ Rood Vlak</div>
+    <div class="vlak v2" id="optie1">⬢ Blauw Vlak</div>
+    <div class="vlak v3" id="optie2">● Geel Vlak</div>
+    <div class="vlak v4" id="optie3">■ Groen Vlak</div>
+  </div>
+
+  <div class="chart-box" id="chart-box" style="display: none;">
+    <canvas id="uitslagChart"></canvas>
+  </div>
+
+  <div id="podium-view" style="display: none; flex-direction: column; align-items: center; width: 100%;"></div>
+
+  <div class="beamer-footer">
+    <div class="lobby-code" id="display-lobby-info">http://127.0.0.1:8000!</div>
+    <div class="timer" id="display-timer"></div>
+    <div class="teller" id="display-teller"></div>
+  </div>
+</div>
+
+<script>
+  let ws;
+  let countdownInterval;
+  let chartInstance = null;
+
+  function verbinden() {
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    // We verbinden als een 'beamer' client
+    ws = new WebSocket(`${protocol}//${location.host}/ws/beamer`);
+
+    ws.onopen = () => { console.log("Beamer scherm verbonden met server."); };
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      verwerkBericht(data);
+    };
+
+    ws.onclose = () => {
+      clearInterval(countdownInterval);
+      setTimeout(verbinden, 2000);
+    };
+  }
+
+  function verwerkBericht(data) {
+    // 1. Algemene Status Synchronisatie
+    if (data.actie === "status_update") {
+      if (data.status === "lobby") {
+        document.getElementById("display-vraag").textContent = "🚀 Welkom bij Mercurius Quiz! 🔭";
+        document.getElementById("display-lobby-info").textContent = `Ga naar de website en vul je naam in!`;
+        document.getElementById("display-teller").textContent = `Deelnemers in lobby: ${data.spelers.length}`;
+        document.getElementById("display-grid").style.display = "grid";
+        document.getElementById("chart-box").style.display = "none";
+        document.getElementById("podium-view").style.display = "none";
+        resetVlakken();
+      }
+      if (data.status === "vraag_actief") {
+        document.getElementById("display-teller").textContent = `Ingezonden: ${data.aantal_antwoorden} / ${data.spelers.length}`;
+      }
+    }
+
+    // 2. Vraag start
+    if (data.actie === "toon_vraag") {
+      clearInterval(countdownInterval);
+
+      document.getElementById("display-grid").style.display = "grid";
+      document.getElementById("chart-box").style.display = "none";
+      document.getElementById("podium-view").style.display = "none";
+      document.getElementById("display-lobby-info").textContent = "";
+      resetVlakken();
+
+      document.getElementById("display-vraag").textContent = data.vraag;
+      document.getElementById("optie0").textContent = "▲ " + data.opties[0];
+      document.getElementById("optie1").textContent = "⬢ " + data.opties[1];
+      document.getElementById("optie2").textContent = "● " + data.opties[2];
+      document.getElementById("optie3").textContent = "■ " + data.opties[3];
+      document.getElementById("display-timer").textContent = `⌛`;
+      document.getElementById("display-teller").textContent = "Bereid je voor...";
+    }
+
+    // 3. Timer gaat lopen
+    if (data.actie === "timer_loopt") {
+      let seconden = data.tijd || 20;
+      clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        seconden--;
+        document.getElementById("display-timer").textContent = `${seconden}s`;
+        if (seconden <= 0) clearInterval(countdownInterval);
+      }, 1000);
+    }
+
+    // 4. Vraag afgelopen (Uitslag & Juiste antwoord)
+    if (data.actie === "vraag_uitslag") {
+      clearInterval(countdownInterval);
+      document.getElementById("display-timer").textContent = "🛑";
+
+      // Vlakken filteren: Licht het goede antwoord op, vervaag de rest
+      document.querySelectorAll('.vlak').forEach((v, idx) => {
+        if (idx === data.correct_index) {
+          v.classList.add('correct');
+        } else {
+          v.classList.add('incorrect');
+        }
+      });
+
+      // Grafiek genereren
+      let counts = [0, 0, 0, 0];
+      if (data.antwoorden) {
+        Object.values(data.antwoorden).forEach(a => { if (a.optie >= 0 && a.optie <= 3) counts[a.optie]++; });
+      }
+      tekenGrafiek(counts);
+    }
+
+    // 5. Quiz Afgelopen (Eindpodium 🎉)
+    if (data.actie === "eind_uitslag") {
+      clearInterval(countdownInterval);
+      document.getElementById("display-vraag").textContent = "👑 EINDRESULTAAT PODIUM 👑";
+      document.getElementById("display-timer").textContent = "";
+      document.getElementById("display-teller").textContent = "";
+
+      document.getElementById("display-grid").style.display = "none";
+      document.getElementById("chart-box").style.display = "none";
+
+      const podiumView = document.getElementById("podium-view");
+      podiumView.style.display = "flex";
+
+      // Confetti!
+      confetti({ particleCount: 180, spread: 90, origin: { y: 0.6 } });
+
+      // Bouw visueel podium
+      let html = '<div class="podium-container">';
+      if (data.ranking[1]) { // Nr 2
+        html += `
+          <div class="podium-column" style="order:1">
+            <div class="podium-name">${esc(data.ranking[1].naam)}</div>
+            <div class="podium-bar podium-2">🥈</div>
+            <div class="podium-score">${data.ranking[1].score} pt</div>
+          </div>`;
+      }
+      if (data.ranking[0]) { // Nr 1
+        html += `
+          <div class="podium-column" style="order:2">
+            <div class="podium-name">${esc(data.ranking[0].naam)}</div>
+            <div class="podium-bar podium-1">🥇</div>
+            <div class="podium-score">${data.ranking[0].score} pt</div>
+          </div>`;
+      }
+      if (data.ranking[2]) { // Nr 3
+        html += `
+          <div class="podium-column" style="order:3">
+            <div class="podium-name">${esc(data.ranking[2].naam)}</div>
+            <div class="podium-bar podium-3">🥉</div>
+            <div class="podium-score">${data.ranking[2].score} pt</div>
+          </div>`;
+      }
+      html += '</div>';
+      podiumView.innerHTML = html;
+    }
+  }
+
+  function tekenGrafiek(counts) {
+    document.getElementById("chart-box").style.display = "block";
+    const ctx = document.getElementById('uitslagChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['▲ Rood', '⬢ Blauw', '● Geel', '■ Groen'],
+        datasets: [{
+          data: counts,
+          backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' }, grid: { color: '#1e2d4d' } },
+          x: { ticks: { color: '#e2e8f0', font: { weight: 'bold', size: 14 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function resetVlakken() {
+    document.querySelectorAll('.vlak').forEach(v => {
+      v.className = v.className.replace('correct', '').replace('incorrect', '').trim();
+    });
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  verbinden();
+</script>
+</body>
+</html>
