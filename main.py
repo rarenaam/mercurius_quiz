@@ -153,7 +153,19 @@ async def speler_pagina():
 
 @app.get("/admin")
 async def admin_pagina():
-    return HTMLResponse((Path(__file__).parent / "admin.html").read_text(encoding="utf-8"))
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(base_dir, "admin.html")
+        
+        print(f"DEBUG: Zoekpad is {file_path}")
+        print(f"DEBUG: Bestaat bestand? {os.path.exists(file_path)}")
+        
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            return HTMLResponse(content)
+    except Exception as e:
+        print(f"DEBUG: CRITIEKE FOUT IN ADMIN ROUTE: {str(e)}")
+        return HTMLResponse(f"<h1>Er ging iets mis:</h1><p>{str(e)}</p>", status_code=500)
 
 @app.get("/beamer")
 async def beamer_pagina():
