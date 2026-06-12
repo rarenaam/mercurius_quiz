@@ -1,1 +1,34 @@
+/* ── Reset & Basis ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+:root {
+  --bg:        #060b18;
+  --surface:   #0e1629;
+  --surface2:  #131f38;
+  --border:    #1e2d4d;
+  --accent:    #4f8ef7;
+  --accent2:   #a78bfa;
+  --text:      #e2e8f0;
+  --muted:     #64748b;
+  --danger:    #ef4444;
+  --success:   #22c55e;
+  --font-ui:   'Space Grotesk', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+  --kh-red:    #e21b3c;
+  --kh-blue:   #1368ce;
+  --kh-yellow: #d89e00;
+  --kh-green:  #26890c;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  overflow: hidden;
+}
