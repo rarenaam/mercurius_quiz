@@ -8,13 +8,26 @@ import json
 import os
 import uvicorn
 from pathlib import Path
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # Initialiseer de FastAPI applicatie
 app = FastAPI()
 security = HTTPBasic()
 
-# Het centrale pad naar het bestand waar de vragen in staan opgeslagen
-pomp = Path(__file__).parent / "vragen.json"
+# ── NIEUW: Firebase Connectie ────────────────────────────────────────────────
+# We kijken of er een omgevingsvariabele is (voor op Render), anders pakken we het lokale bestand.
+firebase_creds_env = os.environ.get("FIREBASE_CREDENTIALS")
+
+if firebase_creds_env:
+    creds_dict = json.loads(firebase_creds_env)
+    cred = credentials.Certificate(creds_dict)
+else:
+    # Zorg dat je gedownloade JSON-bestand exact zo heet en in dezelfde map staat:
+    cred = credentials.Certificate("firebase_key.json")
+
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 # ── Instellingen ─────────────────────────────────────────────────────────────
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "verander_dit_wachtwoord")
@@ -48,18 +61,20 @@ admin_is_bezet: bool = False
 
 # ── Hulpfuncties: Laden van data ─────────────────────────────────────────────
 def laad_vragen() -> None:
-    """Laadt de vragen uit vragen.json. Maakt een leeg bestand aan als het ontbreekt."""
-    if not pomp.exists() or pomp.stat().st_size == 0:
-        pomp.write_text("[]", encoding="utf-8")
-        print("[Systeem] Lege vragen.json aangemaakt.")
-
+    """Laadt de vragen live op uit de Firestore database."""
     try:
-        data = pomp.read_text(encoding="utf-8")
-        quiz["vragen"] = json.loads(data)
-        print(f"[Systeem] {len(quiz['vragen'])} vragen succesvol geladen.")
+        doc_ref = db.collection("quiz_data").document("vragen_doc")
+        doc = doc_ref.get()
+        if doc.exists:
+            quiz["vragen"] = doc.to_dict().get("vragen", [])
+            print(f"[Firebase] {len(quiz['vragen'])} vragen succesvol ingeladen.")
+        else:
+            doc_ref.set({"vragen": []})
+            quiz["vragen"] = []
+            print("[Firebase] Leeg document aangemaakt in de cloud.")
     except Exception as e:
+        print(f"[⚠️ Firebase Fout] Kon vragen niet laden: {e}")
         quiz["vragen"] = []
-        print(f"[⚠️] Fout bij laden vragen.json: {e}")
 
 # Roep de functie direct aan bij het opstarten
 laad_vragen()
@@ -199,12 +214,12 @@ def geef_vragen() -> list:
 @app.post("/api/vragen")
 def opslaan_vragen(nieuwe_vragen: list = Body(...)) -> dict:
     try:
-        content = json.dumps(nieuwe_vragen, indent=2, ensure_ascii=False)
-        pomp.write_text(content, encoding="utf-8")
+        doc_ref = db.collection("quiz_data").document("vragen_doc")
+        doc_ref.set({"vragen": nieuwe_vragen})
         quiz["vragen"] = nieuwe_vragen
-        return {"status": "success", "melding": "Vragen opgeslagen"}
+        return {"status": "success", "melding": "Vragen succesvol opgeslagen in Firebase Cloud!"}
     except Exception as e:
-        return {"status": "error", "melding": str(e)}
+        return {"status": "error", "melding": f"Firebase Cloud Fout: {str(e)}"}
 
 # ── WebSocket Handlers ───────────────────────────────────────────────────────
 @app.websocket("/ws/speler")
