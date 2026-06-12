@@ -34,6 +34,41 @@
       --kh-green:  #26890c;
     }
 
+    /* ── Sterrenhemel ──────────────────────────────────────────────── */
+    #sterren {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ster {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--d, 3s) ease-in-out infinite;
+      opacity: 0;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; }
+      50%       { opacity: var(--op, 0.7); }
+    }
+
+    .nevel {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(80px);
+      animation: nebelDrift var(--nd, 20s) ease-in-out infinite alternate;
+    }
+
+    @keyframes nebelDrift {
+      0%   { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(var(--dx, 20px), var(--dy, 15px)) scale(1.05); }
+    }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -43,7 +78,7 @@
       grid-template-columns: 300px 1fr;
       grid-template-areas: "header header" "sidebar main";
       min-height: 100vh;
-      overflow: hidden; /* Prevent body scroll; children scroll independently */
+      overflow: hidden;
     }
 
     /* ── Header ────────────────────────────────────────────────────── */
@@ -53,7 +88,8 @@
       align-items: center;
       gap: 1.5rem;
       padding: 0.85rem 1.5rem;
-      background: var(--surface);
+      background: rgba(14, 22, 41, 0.88);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
@@ -87,12 +123,15 @@
     /* ── Sidebar ───────────────────────────────────────────────────── */
     aside {
       grid-area: sidebar;
-      background: var(--surface);
+      background: rgba(14, 22, 41, 0.75);
+      backdrop-filter: blur(10px);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      height: calc(100vh - 53px); /* Fill remaining viewport */
+      height: calc(100vh - 53px);
+      position: relative;
+      z-index: 1;
     }
     .sidebar-sectie { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); }
     .sectie-label {
@@ -147,13 +186,16 @@
       display: flex;
       flex-direction: column;
       gap: 1.1rem;
+      position: relative;
+      z-index: 1;
     }
     .view-content { display: none; flex-direction: column; gap: 1.1rem; }
     .view-content.active { display: flex; }
 
     /* ── Cards ─────────────────────────────────────────────────────── */
     .card {
-      background: var(--surface);
+      background: rgba(14, 22, 41, 0.78);
+      backdrop-filter: blur(10px);
       border: 1px solid var(--border);
       border-radius: 0.9rem;
       padding: 1.25rem;
@@ -419,6 +461,9 @@
   </style>
 </head>
 <body>
+
+<!-- Sterrenhemel achtergrond -->
+<div id="sterren"></div>
 
 <header>
   <div class="header-logo">🔭</div>
@@ -1067,6 +1112,45 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
   }
+
+  /* ── Sterrenhemel genereren ──────────────────────────────────────── */
+  (function maakSterren() {
+    const container = document.getElementById("sterren");
+
+    // Zachte nevels op de achtergrond
+    const nevels = [
+      { w: 500, h: 400, top: "0%",  left: "55%", kleur: "rgba(79,142,247,0.05)",  nd: "28s", dx: "25px",  dy: "20px"  },
+      { w: 380, h: 350, top: "45%", left: "0%",  kleur: "rgba(167,139,250,0.04)", nd: "35s", dx: "-15px", dy: "30px"  },
+      { w: 280, h: 280, top: "65%", left: "65%", kleur: "rgba(79,142,247,0.04)",  nd: "22s", dx: "20px",  dy: "-25px" },
+    ];
+
+    nevels.forEach(n => {
+      const el = document.createElement("div");
+      el.className = "nevel";
+      el.style.cssText = `
+        width:${n.w}px; height:${n.h}px;
+        top:${n.top}; left:${n.left};
+        background:${n.kleur};
+        --nd:${n.nd}; --dx:${n.dx}; --dy:${n.dy};
+      `;
+      container.appendChild(el);
+    });
+
+    // Sterren
+    for (let i = 0; i < 160; i++) {
+      const s = document.createElement("div");
+      s.className = "ster";
+      const size = Math.random() * 2.2 + 0.4;
+      s.style.cssText = `
+        width:${size}px; height:${size}px;
+        top:${Math.random() * 100}%; left:${Math.random() * 100}%;
+        --d:${(Math.random() * 5 + 2).toFixed(1)}s;
+        --op:${(Math.random() * 0.55 + 0.15).toFixed(2)};
+        animation-delay:${(Math.random() * 6).toFixed(1)}s;
+      `;
+      container.appendChild(s);
+    }
+  })();
 
   /* ── Start ──────────────────────────────────────────────────────── */
   verbinden();
