@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mercurius – Quizmaster Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #060b18;
+      --surface:   #0e1629;
+      --surface2:  #131f38;
+      --border:    #1e2d4d;
+      --accent:    #4f8ef7;
+      --accent2:   #a78bfa;
+      --danger:    #ef4444;
+      --success:   #22c55e;
+      --warn:      #f59e0b;
+      --gold:      #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --font-ui:   'Space Grotesk', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+
+      /* Kahoot Kleuren */
+      --kh-red:    #e21b3c;
+      --kh-blue:   #1368ce;
+      --kh-yellow: #d89e00;
+      --kh-green:  #26890c;
+    }
+
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font-ui);
+      display: grid; grid-template-rows: auto 1fr; grid-template-columns: 320px 1fr;
+      grid-template-areas: "header header" "sidebar main"; min-height: 100vh;
+    }
+
+    /* Header & Tabs */
+    header {
+      grid-area: header; display: flex; align-items: center; gap: 2rem;
+      padding: 1rem 1.5rem; background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .header-logo { font-size: 1.4rem; }
+    .header-title { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+    .nav-tabs { display: flex; gap: 0.5rem; }
+    .tab-btn {
+      padding: 0.5rem 1rem; border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-family: var(--font-ui); border-radius: 0.4rem; cursor: pointer; font-weight: 500;
+      transition: background 0.2s;
+    }
+    .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .conn-indicator { display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .conn-dot.verbonden { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .conn-dot.verbroken { background: var(--danger); animation: knipperenRed 0.8s ease-in-out infinite; }
+    @keyframes knipperenRed { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+    /* Sidebar */
+    aside { grid-area: sidebar; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+    .sidebar-sectie { padding: 1.25rem; border-bottom: 1px solid var(--border); }
+    .sectie-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+
+    .status-badge { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.9rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.85rem; background: var(--surface2); border: 1px solid var(--border); }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status-lobby .status-dot { background: var(--muted); }
+    .status-vraag_tonen .status-dot { background: var(--accent); }
+    .status-vraag_actief .status-dot { background: var(--success); box-shadow: 0 0 8px var(--success); animation: knipperenRed 1s infinite; }
+    .status-vraag_uitslag .status-dot { background: var(--warn); }
+    .status-eind_uitslag .status-dot { background: var(--accent2); }
+
+    .speler-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.6rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 0.4rem; font-size: 0.85rem; margin-bottom: 0.3rem; list-style: none; }
+    .speler-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+    .geen-spelers { font-size: 0.85rem; color: var(--muted); text-align: center; padding: 0.5rem; list-style: none; }
+
+    /* Main & Views */
+    main { grid-area: main; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.25rem; }
+    .view-content { display: none; flex-direction: column; gap: 1.25rem; }
+    .view-content.active { display: flex; }
+
+    /* Cards & Components */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; }
+    .card-titel { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
+
+    .btn-rij { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .btn { padding: 0.8rem 1.5rem; font-size: 0.9rem; font-weight: 600; border: none; border-radius: 0.55rem; cursor: pointer; font-family: var(--font-ui); transition: transform 0.1s, opacity 0.15s; }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .btn-start { background: var(--success); color: white; }
+    .btn-stop { background: var(--warn); color: black; }
+    .btn-reset { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: var(--danger); color: white; }
+
+    /* Kahoot Board Preview */
+    .beamer-preview { background: #02060f; border-radius: 0.75rem; padding: 2rem; text-align: center; border: 2px dashed var(--border); position: relative; }
+    .preview-vraag { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; min-height: 40px; line-height: 1.3; }
+    .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .vlak { padding: 1.2rem; border-radius: 0.5rem; color: white; font-weight: 600; text-align: left; font-size: 1.1rem; opacity: 0.8; border: 4px solid transparent; transition: all 0.2s; }
+    .vlak.correct { border: 4px solid white; opacity: 1; box-shadow: 0 0 20px white; }
+    .v1 { background: var(--kh-red); } .v2 { background: var(--kh-blue); } .v3 { background: var(--kh-yellow); } .v4 { background: var(--kh-green); }
+
+    /* Live Grafiek Container */
+    .chart-container { max-width: 440px; margin: 1.5rem auto 0 auto; background: var(--surface); padding: 1rem; border-radius: 0.6rem; border: 1px solid var(--border); }
+
+    /* ANIMATIE EN 3D PODIUM STYLES */
+    @keyframes growPodium {
+      from { height: 0px; }
+    }
+    .podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 1rem; margin: 1.5rem auto 0 auto; height: 160px; max-width: 420px; }
+    .podium-column { display: flex; flex-direction: column; align-items: center; flex: 1; text-align: center; }
+    .podium-bar {
+      width: 100%; border-top-left-radius: 0.6rem; border-top-right-radius: 0.6rem;
+      display: flex; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: #02060f;
+      animation: growPodium 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; /* Vloeiende opkomende animatie */
+    }
+    .podium-1 { height: 110px; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+    .podium-2 { height: 80px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+    .podium-3 { height: 55px; background: linear-gradient(135deg, #b45309, #78350f); }
+    .podium-name { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+    .podium-score { font-size: 0.8rem; font-family: var(--font-mono); color: var(--accent2); margin-top: 0.4rem; font-weight: 700; }
+
+    /* Ranking Tabel */
+    .ranking-tabel { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
+    .ranking-tabel th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .ranking-tabel td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); }
+    .ranking-tabel tr:hover td { background: var(--surface2); }
+    .goud { color: var(--gold); } .zilver { color: #94a3b8; } .brons { color: #b45309; }
+
+    /* Logs */
+    #log-container { background: #02060f; border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.75rem 1rem; font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.2rem; }
+    .log-regel { line-height: 1.5; }
+    .log-regel.info { color: var(--accent); }
+    .log-regel.succes { color: var(--success); }
+    .log-regel.warn { color: var(--warn); }
+    .log-regel.fout { color: var(--danger); }
+
+    /* Editor Layout */
+    .editor-layout { display: grid; grid-template-columns: 260px 1fr; gap: 1.5rem; }
+    .vragen-lijst-sidebar { background: var(--surface2); border-radius: 0.5rem; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; max-height: 520px; overflow-y: auto;}
+    .vraag-thumb { padding: 0.6rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.4rem; font-size: 0.85rem; cursor: pointer; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; transition: border-color 0.15s; }
+    .vraag-thumb:hover, .vraag-thumb.active { border-color: var(--accent); background: #16223f; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; }
+    .form-input { width: 100%; padding: 0.6rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 0.4rem; color: white; font-family: var(--font-ui); }
+    .optie-input-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .radio-correct { width: 18px; height: 18px; cursor: pointer; }
+
+    .mono { font-family: var(--font-mono); }
+    .placeholder { text-align: center; padding: 1.5rem; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">🔭</div>
+  <div>
+    <div class="header-title">Mercurius Studio</div>
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" id="tab-dashboard" onclick="switchTab('dashboard')">🎛️ Quiz Dashboard</button>
+    <button class="tab-btn" id="tab-editor" onclick="switchTab('editor')">📝 Vragen Editor</button>
+  </div>
+  <div style="flex:1"></div>
+  <div class="conn-indicator">
+    <div class="conn-dot" id="conn-dot"></div>
+    <span id="conn-tekst">Verbinden…</span>
+  </div>
+</header>
+
+<aside>
+  <div class="sidebar-sectie">
+    <div class="sectie-label">Quizstatus</div>
+    <div class="status-badge status-lobby" id="status-badge">
+      <div class="status-dot"></div>
+      <span id="status-tekst">LOBBY</span>
+      &nbsp;·&nbsp;
+      <span id="ronde-teller" class="mono">0/0</span>
+    </div>
+  </div>
+
+  <div class="sidebar-sectie" style="flex: 1;">
+    <div class="sectie-label">Deelnemers (<span id="speler-count">0</span>)</div>
+    <ul id="speler-lijst">
+      <li class="geen-spelers">Geen spelers verbonden</li>
+    </ul>
+  </div>
+</aside>
+
+<main>
+
+  <div id="view-dashboard" class="view-content active">
+    <div class="card">
+      <div class="card-titel">Rondebesturing (Beamer Scherm)</div>
+      <div class="btn-rij">
+        <button class="btn btn-start" id="btn-start-quiz" onclick="stuurActie('start_quiz')">▶ Start Quiz</button>
+        <button class="btn btn-stop" id="btn-stop-vraag" onclick="stuurActie('stop_vraag')" disabled>■ Stop & Toon Uitslag</button>
+        <button class="btn btn-start" id="btn-volgende" onclick="stuurActie('volgende_vraag')" disabled>⏭️ Volgende Vraag</button>
+        <button class="btn btn-reset" id="btn-reset" onclick="stuurActie('reset')">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-titel">Beamer Scherm Preview (Wat iedereen op het hoofdscherm ziet)</div>
+      <div class="beamer-preview" id="beamer-scherm">
+        <div class="preview-vraag" id="b-vraag">Geen active quiz. Klik op 'Start Quiz' hierboven.</div>
+
+        <div class="preview-grid" id="b-antwoord-grid">
+          <div class="vlak v1" id="b-optie0">▲ Rood Vlak</div>
+          <div class="vlak v2" id="b-optie1">⬢ Blauw Vlak</div>
+          <div class="vlak v3" id="b-optie2">● Geel Vlak</div>
+          <div class="vlak v4" id="b-optie3">■ Groen Vlak</div>
+        </div>
+
+        <div class="chart-container" id="b-chart-box" style="display: none;">
+          <canvas id="uitslagChart"></canvas>
+        </div>
+
+        <div id="b-podium-view" style="display:none; flex-direction:column; align-items:center; width:100%;"></div>
+
+        <div id="b-timer" class="mono" style="margin-top:1.5rem; font-size:1.5rem; color:var(--accent)"></div>
+        <div id="b-teller" style="margin-top:0.5rem; font-size:0.9rem; color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-titel">Tussenstand / Laatste Uitslag</div>
+      <div id="uitslag-inhoud" class="placeholder">Start de quiz om de ranglijst live te volgen.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-titel">Activiteitenlog</div>
+      <div id="log-container"></div>
+    </div>
+  </div>
+
+  <div id="view-editor" class="view-content">
+    <div class="card">
+      <div class="card-titel">Vragen Beheerder</div>
+      <div class="editor-layout">
+        <div>
+          <button class="btn btn-reset" style="width:100%; margin-bottom:0.75rem;" onclick="nieuweVraag()">➕ Nieuwe Vraag</button>
+          <div class="vragen-lijst-sidebar" id="editor-lijst"></div>
+        </div>
+        <div id="editor-form" style="display:none; flex-direction:column; gap:1rem;">
+          <div class="form-group">
+            <label>De Vraagsteller</label>
+            <input type="text" id="f-vraag" class="form-input" placeholder="Bijv. Wat is de wet van Ohm?">
+          </div>
+
+          <div class="form-group">
+            <label>Antwoordopties (Vink het juiste rondje aan)</label>
+            <div class="optie-input-row"><input type="radio" name="correct" value="0" class="radio-correct"><input type="text" id="f-optie0" class="form-input" style="border-left:4px solid var(--kh-red)" placeholder="Optie A (Rood)"></div>
+            <div class="optie-input-row"><input type="radio" name="correct" value="1" class="radio-correct"><input type="text" id="f-optie1" class="form-input" style="border-left:4px solid var(--kh-blue)" placeholder="Optie B (Blauw)"></div>
+            <div class="optie-input-row"><input type="radio" name="correct" value="2" class="radio-correct"><input type="text" id="f-optie2" class="form-input" style="border-left:4px solid var(--kh-yellow)" placeholder="Optie C (Geel)"></div>
+            <div class="optie-input-row"><input type="radio" name="correct" value="3" class="radio-correct"><input type="text" id="f-optie3" class="form-input" style="border-left:4px solid var(--kh-green)" placeholder="Optie D (Groen)"></div>
+          </div>
+
+          <div class="form-group" style="width:200px;">
+            <label>Tijdlimiet (seconden)</label>
+            <input type="number" id="f-tijd" class="form-input mono" value="20">
+          </div>
+
+          <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button class="btn btn-start" onclick="slaHuidigeVraagOp()">💾 Vraag Opslaan</button>
+            <button class="btn btn-danger" onclick="verwijderHuidigeVraag()">🗑️ Verwijderen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  let ws;
+  let herverbindingTimeout;
+  let alleVragen = [];
+  let geselecteerdeVraagIndex = null;
+  let countdownInterval;
+  let uitslagChartInstance = null; // Houdt de Chart.js referentie vast
+
+  /* ── WebSocket Verbinding & Auto-Reconnect ─────────────────────────── */
+  function verbinden() {
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    ws = new WebSocket(`${protocol}//${location.host}/ws/admin`);
+
+    ws.onopen = () => {
+      setConnStatus(true);
+      log("Verbonden met de Mercurius-server.", "succes");
+      clearTimeout(herverbindingTimeout);
+    };
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      verwerkBericht(data);
+    };
+
+    ws.onclose = () => {
+      setConnStatus(false);
+      log("Verbinding verbroken. Opnieuw proberen over 3s…", "fout");
+      clearInterval(countdownInterval);
+      herverbindingTimeout = setTimeout(verbinden, 3000);
+    };
+
+    ws.onerror = () => {
+      log("WebSocket netwerkfout opgetreden.", "fout");
+    };
+  }
+
+  function stuurActie(actie) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ actie }));
+    }
+  }
+
+  /* ── State Machine Berichtenverwerking ──────────────────────────────── */
+  function verwerkBericht(data) {
+    if (data.actie === "status_update") {
+      updateSidebarStatus(data.status);
+      document.getElementById("ronde-teller").textContent = `${data.huidige_vraag_index + 1}/${data.totaal_vragen}`;
+      document.getElementById("speler-count").textContent = data.spelers.length;
+
+      // Update spelerlijst aan de zijkant
+      const spelerLijst = document.getElementById("speler-lijst");
+      if (!data.spelers.length) {
+        spelerLijst.innerHTML = `<li class="geen-spelers">Geen spelers verbonden</li>`;
+      } else {
+        spelerLijst.innerHTML = data.spelers.map(s => `
+          <li class="speler-item">
+            <div class="dot"></div>
+            <span style="flex:1;">${escHtml(s.naam)}</span>
+            <span class="mono" style="color:var(--accent2)">${s.score} pt</span>
+          </li>
+        `).join("");
+      }
+
+      // Knoppen in- of uitschakelen op basis van status
+      document.getElementById("btn-start-quiz").disabled = data.status !== "lobby";
+      document.getElementById("btn-stop-vraag").disabled = data.status !== "vraag_actief";
+      document.getElementById("btn-volgende").disabled = data.status !== "vraag_uitslag";
+      document.getElementById("btn-reset").disabled = data.status === "lobby";
+
+      if (data.status === "vraag_actief") {
+        document.getElementById("b-teller").textContent = `Ingezonden antwoorden: ${data.aantal_antwoorden} / ${data.spelers.length}`;
+      }
+    }
+
+    if (data.actie === "toon_vraag") {
+      clearInterval(countdownInterval);
+      log(`Vraag geladen: "${data.vraag}"`, "info");
+
+      // UI Swaps: Reset weergaves en verberg grafiek/podium
+      document.getElementById("b-antwoord-grid").style.display = "grid";
+      document.getElementById("b-podium-view").style.display = "none";
+      document.getElementById("b-chart-box").style.display = "none";
+
+      // Reset gloeiende randen
+      document.querySelectorAll('.vlak').forEach(v => v.classList.remove('correct'));
+
+      document.getElementById("b-vraag").textContent = data.vraag;
+      document.getElementById("b-optie0").textContent = "▲ " + data.opties[0];
+      document.getElementById("b-optie1").textContent = "⬢ " + data.opties[1];
+      document.getElementById("b-optie2").textContent = "● " + data.opties[2];
+      document.getElementById("b-optie3").textContent = "■ " + data.opties[3];
+      document.getElementById("b-timer").textContent = `⏱️ Bereid je voor... (${data.tijd}s)`;
+      document.getElementById("b-teller").textContent = "Leestijd actief... De timer start zo automatisch!";
+    }
+
+    if (data.actie === "timer_loopt") {
+      log("De timer loopt! Spelers kunnen nu antwoorden.", "succes");
+      let tijdStr = document.getElementById("b-timer").textContent;
+      let match = tijdStr.match(/\d+/);
+      let seconden = match ? parseInt(match[0]) : 20;
+
+      clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        seconden--;
+        document.getElementById("b-timer").textContent = `⏱️ TIJD: ${seconden}s`;
+        if (seconden <= 0) {
+          clearInterval(countdownInterval);
+          stuurActie('stop_vraag');
+        }
+      }, 1000);
+    }
+
+    if (data.actie === "vraag_uitslag") {
+      clearInterval(countdownInterval);
+      log("Vraag gesloten. Resultaten worden berekend.", "warn");
+
+      document.getElementById("b-timer").textContent = "🛑 Vraag Gesloten!";
+      document.getElementById("b-teller").textContent = "Einde ronde! De scores zijn bijgewerkt.";
+
+      // Licht het juiste antwoord op de beamer op
+      document.querySelectorAll('.vlak').forEach(v => v.classList.remove('correct'));
+      document.getElementById(`b-optie${data.correct_index}`).classList.add('correct');
+
+      // LIVE GRAFIEK GENEREREN: Tel de antwoorden per optie
+      let counts = [0, 0, 0, 0];
+      if (data.antwoorden) {
+        Object.values(data.antwoorden).forEach(a => {
+          if (a.optie >= 0 && a.optie <= 3) counts[a.optie]++;
+        });
+      }
+      tekenLiveGrafiek(counts);
+
+      // Genereer de uitslagtabel voor deze ronde
+      toonRanglijstTabel(data.ranking);
+    }
+
+    if (data.actie === "eind_uitslag") {
+      clearInterval(countdownInterval);
+      log("🏁 Einde van de quiz bereikt! Het eindpodium staat klaar.", "succes");
+
+      document.getElementById("b-vraag").textContent = "🏆 EINDRESULTAAT PODIUM 🏆";
+      document.getElementById("b-timer").textContent = "";
+      document.getElementById("b-teller").textContent = "Gefeliciteerd aan de winnaars!";
+
+      // Verwijder alle oude witte selectieranden en grafiek
+      document.querySelectorAll('.vlak').forEach(v => v.classList.remove('correct'));
+      document.getElementById("b-chart-box").style.display = "none";
+
+      // UI Swaps: Verberg antwoorden grid, activeer podium view
+      document.getElementById("b-antwoord-grid").style.display = "none";
+      const podiumView = document.getElementById("b-podium-view");
+      podiumView.style.display = "flex";
+
+      // TRIGGER CONFETTI REGEN 🎉
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+
+      // Bouw visueel 3D podium op basis van live data
+      let podiumHtml = '<div class="podium-container">';
+
+      // Nummer 2 (Links)
+      if (data.ranking[1]) {
+        podiumHtml += `
+          <div class="podium-column" style="order: 1;">
+            <div class="podium-name" title="${escHtml(data.ranking[1].naam)}">${escHtml(data.ranking[1].naam)}</div>
+            <div class="podium-bar podium-2">🥈</div>
+            <div class="podium-score">${data.ranking[1].score} pt</div>
+          </div>`;
+      }
+      // Nummer 1 (Midden)
+      if (data.ranking[0]) {
+        podiumHtml += `
+          <div class="podium-column" style="order: 2;">
+            <div class="podium-name" title="${escHtml(data.ranking[0].naam)}">${escHtml(data.ranking[0].naam)}</div>
+            <div class="podium-bar podium-1">🥇</div>
+            <div class="podium-score">${data.ranking[0].score} pt</div>
+          </div>`;
+      } else {
+        podiumHtml += `<div class="placeholder">Geen deelnemers</div>`;
+      }
+      // Nummer 3 (Rechts)
+      if (data.ranking[2]) {
+        podiumHtml += `
+          <div class="podium-column" style="order: 3;">
+            <div class="podium-name" title="${escHtml(data.ranking[2].naam)}">${escHtml(data.ranking[2].naam)}</div>
+            <div class="podium-bar podium-3">🥉</div>
+            <div class="podium-score">${data.ranking[2].score} pt</div>
+          </div>`;
+      }
+      podiumHtml += '</div>';
+
+      // Runners-up (Plek 4 en 5) indien aanwezig
+      if (data.ranking.length > 3) {
+        podiumHtml += '<div style="margin-top:1.5rem; width:100%; max-width:320px; display:flex; flex-direction:column; gap:0.4rem;">';
+        data.ranking.slice(3, 5).forEach((s, i) => {
+          podiumHtml += `
+            <div style="display:flex; justify-content:space-between; background:var(--surface2); padding:0.5rem 0.8rem; border-radius:0.4rem; font-size:0.85rem; border:1px solid var(--border);">
+              <span style="font-weight:500;">#${i+4} ${escHtml(s.naam)}</span>
+              <span style="color:var(--accent2); font-weight:700; font-family:var(--font-mono);">${s.score} pt</span>
+            </div>`;
+        });
+        podiumHtml += '</div>';
+      }
+
+      podiumView.innerHTML = podiumHtml;
+      toonRanglijstTabel(data.ranking);
+    }
+
+    if (data.actie === "reset") {
+      clearInterval(countdownInterval);
+      log("De quiz is gereset naar de lobby.", "warn");
+
+      // Terug naar antwoorden-grid
+      document.getElementById("b-antwoord-grid").style.display = "grid";
+      document.getElementById("b-podium-view").style.display = "none";
+      document.getElementById("b-chart-box").style.display = "none";
+      document.querySelectorAll('.vlak').forEach(v => v.classList.remove('correct'));
+
+      document.getElementById("b-vraag").textContent = "Geen actieve quiz. Klik op 'Start Quiz' hierboven.";
+      document.getElementById("b-timer").textContent = "";
+      document.getElementById("b-teller").textContent = "";
+      document.getElementById("uitslag-inhoud").innerHTML = `<div class="placeholder">Start de quiz om de ranglijst live te volgen.</div>`;
+    }
+  }
+
+  /* ── Chart.js Live Teken Functie ─────────────────────────────────── */
+  function tekenLiveGrafiek(dataCounts) {
+    document.getElementById("b-chart-box").style.display = "block";
+    const ctx = document.getElementById('uitslagChart').getContext('2d');
+
+    if (uitslagChartInstance) {
+      uitslagChartInstance.destroy(); // Oude grafiek weggooien voor een frisse start
+    }
+
+    uitslagChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['▲ Rood', '⬢ Blauw', '● Geel', '■ Groen'],
+        datasets: [{
+          data: dataCounts,
+          backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, color: '#64748b' },
+            grid: { color: '#1e2d4d' }
+          },
+          x: {
+            ticks: { color: '#e2e8f0', font: { weight: 'bold' } },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  /* ── UI Dynamische Helpers ─────────────────────────────────────────── */
+  function updateSidebarStatus(status) {
+    const badge = document.getElementById("status-badge");
+    const tekst = document.getElementById("status-tekst");
+    badge.className = `status-badge status-${status}`;
+    tekst.textContent = status.replace("_", " ").toUpperCase();
+  }
+
+  function setConnStatus(verbonden) {
+    const dot = document.getElementById("conn-dot");
+    const tekst = document.getElementById("conn-tekst");
+    dot.className = "conn-dot " + (verbonden ? "verbonden" : "verbroken");
+    tekst.textContent = verbonden ? "Verbonden" : "Verbroken";
+  }
+
+  function toonRanglijstTabel(ranking) {
+    const container = document.getElementById("uitslag-inhoud");
+    if (!ranking || !ranking.length) {
+      container.innerHTML = `<div class="placeholder">Nog geen scores geregistreerd.</div>`;
+      return;
+    }
+
+    let html = `
+      <table class="ranking-tabel">
+        <thead>
+          <tr><th>#</th><th>Naam</th><th>Totaalscore</th></tr>
+        </thead>
+        <tbody>
+    `;
+    ranking.forEach((speler, idx) => {
+      let pos = idx + 1;
+      let cl = pos === 1 ? "goud" : pos === 2 ? "zilver" : pos === 3 ? "brons" : "";
+      let icon = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : `#${pos}`;
+      html += `
+        <tr>
+          <td class="mono ${cl}" style="font-weight:700;">${icon}</td>
+          <td>${escHtml(speler.naam)}</td>
+          <td class="mono" style="font-weight:700; color:var(--accent);">${speler.score} pt</td>
+        </tr>
+      `;
+    });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+
+    if (tab === 'dashboard') {
+      document.getElementById('tab-dashboard').classList.add('active');
+      document.getElementById('view-dashboard').classList.add('active');
+    } else {
+      document.getElementById('tab-editor').classList.add('active');
+      document.getElementById('view-editor').classList.add('active');
+      laadVragenVanServer();
+    }
+  }
+
+  /* ── REST API Vragen Editor Logica ─────────────────────────────────── */
+  async function laadVragenVanServer() {
+    try {
+      let res = await fetch("/api/vragen");
+      alleVragen = await res.json();
+      bouwVragenLijstSidebar();
+    } catch(e) {
+      log("Kon de vragen niet ophalen van de server.", "fout");
+    }
+  }
+
+  function bouwVragenLijstSidebar() {
+    let container = document.getElementById("editor-lijst");
+    container.innerHTML = alleVragen.map((v, idx) => `
+      <div class="vraag-thumb ${idx === geselecteerdeVraagIndex ? 'active' : ''}" onclick="laadVraagInForm(${idx})">
+        ${idx + 1}. ${escHtml(v.vraag) || '(Lege vraag)'}
+      </div>
+    `).join("");
+  }
+
+  function laadVraagInForm(idx) {
+    geselecteerdeVraagIndex = idx;
+    bouwVragenLijstSidebar();
+
+    let v = alleVragen[idx];
+    document.getElementById("f-vraag").value = v.vraag;
+    document.getElementById("f-optie0").value = v.opties[0] || '';
+    document.getElementById("f-optie1").value = v.opties[1] || '';
+    document.getElementById("f-optie2").value = v.opties[2] || '';
+    document.getElementById("f-optie3").value = v.opties[3] || '';
+    document.getElementById("f-tijd").value = v.tijd_limiet || 20;
+
+    let radios = document.getElementsByName("correct");
+    radios.forEach(r => r.checked = false);
+    if (v.correct_index !== undefined && radios[v.correct_index]) {
+      radios[v.correct_index].checked = true;
+    }
+
+    document.getElementById("editor-form").style.display = "flex";
+  }
+
+  function nieuweVraag() {
+    alleVragen.push({
+      id: Date.now(),
+      vraag: "Nieuwe Vraag",
+      opties: ["", "", "", ""],
+      correct_index: 0,
+      tijd_limiet: 20
+    });
+    laadVraagInForm(alleVragen.length - 1);
+  }
+
+  async function slaHuidigeVraagOp() {
+    if (geselecteerdeVraagIndex === null) return;
+
+    let correctVal = 0;
+    document.getElementsByName("correct").forEach(r => { if(r.checked) correctVal = parseInt(r.value); });
+
+    alleVragen[geselecteerdeVraagIndex] = {
+      id: alleVragen[geselecteerdeVraagIndex].id,
+      vraag: document.getElementById("f-vraag").value,
+      opties: [
+        document.getElementById("f-optie0").value,
+        document.getElementById("f-optie1").value,
+        document.getElementById("f-optie2").value,
+        document.getElementById("f-optie3").value
+      ],
+      correct_index: correctVal,
+      tijd_limiet: parseInt(document.getElementById("f-tijd").value) || 20
+    };
+
+    try {
+      await fetch("/api/vragen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(alleVragen)
+      });
+      bouwVragenLijstSidebar();
+      alert("Vraag succesvol weggeschreven naar vragen.json!");
+    } catch(e) {
+      alert("Fout bij opslaan van de vraag op de server.");
+    }
+  }
+
+  async function verwijderHuidigeVraag() {
+    if (geselecteerdeVraagIndex === null) return;
+    alleVragen.splice(geselecteerdeVraagIndex, 1);
+    geselecteerdeVraagIndex = null;
+
+    try {
+      await fetch("/api/vragen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(alleVragen)
+      });
+      document.getElementById("editor-form").style.display = "none";
+      laadVragenVanServer();
+    } catch(e) {
+      alert("Kon de vraag niet verwijderen.");
+    }
+  }
+
+  /* ── Logboek & XSS Security Helpers ────────────────────────────────── */
+  function log(bericht, type = "info") {
+    const container = document.getElementById("log-container");
+    const nu = new Date().toLocaleTimeString("nl-NL", { hour12: false });
+    const div = document.createElement("div");
+    div.className = `log-regel ${type}`;
+    div.textContent = `[${nu}] ${bericht}`;
+    container.prepend(div);
+    while (container.children.length > 150) container.removeChild(container.lastChild);
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // Start de WebSocket verbinding direct
+  verbinden();
+</script>
+</body>
+</html>
