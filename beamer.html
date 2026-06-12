@@ -121,7 +121,6 @@
       border: 5px solid transparent;
       transition: all 0.3s ease;
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      /* Subtiele glinstering boven de kleur */
       background-clip: padding-box;
     }
 
@@ -250,26 +249,11 @@
 
     .teller     { font-size: 1.1rem; color: var(--muted); font-weight: 500; }
     .lobby-code { font-size: 1.3rem; font-weight: 600; color: var(--accent2); min-width: 80px; text-align: right; }
-    /* ── Zon ───────────────────────────────────────────────────────── */
-    #zon-canvas {
-      position: fixed;
-      bottom: -120px;
-      right: -80px;
-      width: 420px;
-      height: 420px;
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.55;
-    }
   </style>
 </head>
 <body>
 
-<!-- Sterrenhemel achtergrond -->
 <div id="sterren"></div>
-
-<!-- Gloeiende zon rechtsonder -->
-<canvas id="zon-canvas"></canvas>
 
 <div class="beamer-container">
   <div class="vraag-titel" id="display-vraag">Wachten op de quizmaster…</div>
@@ -295,11 +279,11 @@
 </div>
 
 <script>
-  /* ── Sterrenhemel genereren ──────────────────────────────────────── */
+  /* ── Sterrenhemel & Nevels genereren ──────────────────────────────── */
   (function maakSterren() {
     const container = document.getElementById("sterren");
 
-    // Nevels (grote, vage gloeiende bollen)
+    // De vage, trage nevel-bollen blijven actief voor de dieptewerking
     const nevels = [
       { w: 500, h: 400, top: "5%",  left: "60%", kleur: "rgba(79,142,247,0.06)",  nd: "25s", dx: "30px",  dy: "20px" },
       { w: 400, h: 350, top: "50%", left: "5%",  kleur: "rgba(167,139,250,0.05)", nd: "30s", dx: "-20px", dy: "25px" },
@@ -318,7 +302,7 @@
       container.appendChild(el);
     });
 
-    // Sterren (veel meer op een beamerscherm)
+    // Twinkelende sterren
     for (let i = 0; i < 220; i++) {
       const s = document.createElement("div");
       s.className = "ster";
@@ -345,7 +329,7 @@
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(`${protocol}//${location.host}/ws/beamer`);
 
-    ws.onopen  = () => console.log("Beamer verbonden.");
+    ws.onopen   = () => console.log("Beamer verbonden.");
     ws.onmessage = (e) => {
       try { verwerkBericht(JSON.parse(e.data)); }
       catch(err) { console.error("Ongeldig bericht:", err); }
@@ -358,7 +342,6 @@
 
   /* ── Berichtenverwerking ────────────────────────────────────────── */
   function verwerkBericht(data) {
-
     if (data.actie === "status_update") {
       if (data.status === "lobby") {
         document.getElementById("display-vraag").textContent = "🚀 Welkom bij Mercurius Quiz! 🔭";
@@ -388,7 +371,7 @@
       document.getElementById("display-lobby-info").textContent = "";
       resetVlakken();
 
-      document.getElementById("display-vraag").textContent  = data.vraag;
+      document.getElementById("display-vraag").textContent   = data.vraag;
       document.getElementById("optie0").textContent = "▲ " + (data.opties[0] || "");
       document.getElementById("optie1").textContent = "⬢ " + (data.opties[1] || "");
       document.getElementById("optie2").textContent = "● " + (data.opties[2] || "");
@@ -472,7 +455,6 @@
     });
     html += "</div>";
 
-    // Plek 4 & 5
     if (ranking.length > 3) {
       html += '<div style="margin-top:1.25rem; width:100%; max-width:420px; display:flex; flex-direction:column; gap:0.4rem;">';
       ranking.slice(3, 5).forEach((s, i) => {
@@ -532,9 +514,6 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
-
-    frame();
-  })();
 
   verbinden();
 </script>
