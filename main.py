@@ -17,8 +17,6 @@ security = HTTPBasic()
 pomp = Path(__file__).parent / "vragen.json"
 
 # ── Instellingen ─────────────────────────────────────────────────────────────
-# Sla het wachtwoord op als omgevingsvariabele: ADMIN_PASSWORD=geheim uvicorn main:app
-# Als de variabele niet is ingesteld, valt het terug op een standaardwaarde (alleen voor ontwikkeling).
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "verander_dit_wachtwoord")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 
@@ -45,9 +43,7 @@ spelers: dict[str, WebSocket] = {}
 admin_ws: WebSocket | None = None
 beamer_ws: list[WebSocket] = []
 
-# Vlag die bijhoudt of er al een actieve admin-sessie is.
-# Wordt True zodra de admin-pagina met succes wordt geladen, en
-# False zodra de bijbehorende WebSocket-verbinding wordt gesloten.
+# Vlag die bijhoudt of er al een actieve admin-sessie is via WebSocket.
 admin_is_bezet: bool = False
 
 # ── Hulpfuncties: Laden van data ─────────────────────────────────────────────
@@ -70,13 +66,7 @@ laad_vragen()
 
 # ── Admin Authenticatie ───────────────────────────────────────────────────────
 def check_admin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
-    """
-    Controleert het wachtwoord en of er al een actieve admin-sessie is.
-    Gooit een HTTPException als de controle mislukt.
-    Geeft de gebruikersnaam terug als alles in orde is.
-    """
-    global admin_is_bezet
-
+    """Controleert de inloggegevens van de admin via HTTP Basic Auth."""
     gebruikersnaam_correct = credentials.username == ADMIN_USERNAME
     wachtwoord_correct = credentials.password == ADMIN_PASSWORD
 
@@ -86,13 +76,6 @@ def check_admin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
             detail="Verkeerde inloggegevens",
             headers={"WWW-Authenticate": "Basic"},
         )
-
-    if admin_is_bezet:
-        raise HTTPException(
-            status_code=403,
-            detail="Er is al een quizmaster ingelogd. Probeer het later opnieuw.",
-        )
-
     return credentials.username
 
 # ── Kahoot Score Logica ──────────────────────────────────────────────────────
@@ -141,7 +124,8 @@ async def update_admin_dashboard() -> None:
         try:
             await ws.send_json(dashboard_data)
         except Exception:
-            beamer_ws.remove(ws)
+            if ws in beamer_ws:
+                beamer_ws.remove(ws)
 
 # ── Quiz Logica: Starten van een nieuwe vraag ────────────────────────────────
 async def start_nieuwe_vraag_proces(index: int) -> None:
@@ -161,7 +145,8 @@ async def start_nieuwe_vraag_proces(index: int) -> None:
         try:
             await ws.send_json(vraag_info)
         except Exception:
-            beamer_ws.remove(ws)
+            if ws in beamer_ws:
+                beamer_ws.remove(ws)
 
     await broadcast_spelers({"actie": "vraag_voorbereiden"})
     await update_admin_dashboard()
@@ -183,7 +168,8 @@ async def start_nieuwe_vraag_proces(index: int) -> None:
             try:
                 await ws.send_json(timer_msg)
             except Exception:
-                beamer_ws.remove(ws)
+                if ws in beamer_ws:
+                    beamer_ws.remove(ws)
 
         await update_admin_dashboard()
 
@@ -194,19 +180,11 @@ async def speler_pagina() -> HTMLResponse:
 
 @app.get("/admin")
 async def admin_pagina(user: str = Depends(check_admin)) -> HTMLResponse:
-    """
-    Laadt de admin-pagina na succesvolle authenticatie.
-    Markeert de admin-plek als bezet zodat een tweede inlog wordt geblokkeerd.
-    De plek komt weer vrij zodra de WebSocket-verbinding (/ws/admin) wordt gesloten.
-    """
-    global admin_is_bezet
-    admin_is_bezet = True
+    """Laadt de admin-pagina na succesvolle authenticatie."""
     try:
         file_path = Path(__file__).parent / "admin.html"
         return HTMLResponse(file_path.read_text(encoding="utf-8"))
     except Exception as e:
-        # Als het bestand niet geladen kan worden, geef de plek meteen terug vrij
-        admin_is_bezet = False
         raise HTTPException(status_code=500, detail=f"Kan admin.html niet laden: {e}")
 
 @app.get("/beamer")
@@ -236,71 +214,95 @@ async def ws_speler(websocket: WebSocket) -> None:
     try:
         while True:
             raw = await websocket.receive_text()
-            data = json.loads(raw)
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                continue  # Sla ongeldige JSON over om crashes te voorkomen
+            
             actie = data.get("actie")
 
             if actie == "aanmelden":
                 nickname = data.get("naam", "").strip()[:15]
-                # We controleren nu alleen nog of de naam niet leeg is
                 if not nickname:
                     await websocket.close(code=1008)
                     return
                 
-                # 💡 DE FIX: Als de naam al in de lijst staat (omdat de 10 sec timer nog loopt)
-                # dan sluiten we de oude, vastgelopen websocket en overschrijven we hem.
                 if nickname in spelers:
                     oude_ws = spelers[nickname]
                     try:
-                        await oude_ws.close(code=1000)  # Sluit de oude socket netjes af
+                        await oude_ws.close(code=1000)
                     except Exception:
-                        pass  # Als hij al écht dood was, negeer de foutmelding
+                        pass
                 
-                # Koppel de nieuwe websocket aan de speler
                 spelers[nickname] = websocket
                 quiz["scores"].setdefault(nickname, 0)
                 await update_admin_dashboard()
 
             elif actie == "insturen_antwoord" and quiz["status"] == QuizState.VRAAG_ACTIEF:
                 if nickname and nickname not in quiz["antwoorden"]:
-                    reistijd = time.time() * 1000 - quiz["start_tijd"]
-                    quiz["antwoorden"][nickname] = {
-                        "optie": int(data["keuze"]),
-                        "tijd_ms": reistijd,
-                    }
-                    await update_admin_dashboard()
+                    try:
+                        keuze_optie = int(data["keuze"])
+                        reistijd = time.time() * 1000 - quiz["start_tijd"]
+                        quiz["antwoorden"][nickname] = {
+                            "optie": keuze_optie,
+                            "tijd_ms": reistijd,
+                        }
+                        await update_admin_dashboard()
+                    except (ValueError, KeyError):
+                        continue  # Sla over als de meegestuurde 'keuze' corrupt is
 
     except WebSocketDisconnect:
         if nickname:
-            # Wacht eerst 10 seconden of de speler weer terug online komt
             await asyncio.sleep(10)
-            
-            # Controleer of de websocket in 'spelers' nog steeds exact deze oude, gebroken verbinding is.
-            # Als de speler tussendoor is herverbonden, heeft hij een nieuwe websocket gekregen en doen we niks!
             if nickname in spelers and spelers[nickname] == websocket:
                 spelers.pop(nickname, None)
-                # EXTRA: Update het dashboard zodat de admin ziet dat de speler echt weg is
                 await update_admin_dashboard()
 
+@app.websocket("/ws/beamer")
+async def ws_beamer(websocket: WebSocket) -> None:
+    """WebSocket endpoint voor grote beamerschermen."""
+    await websocket.accept()
+    beamer_ws.append(websocket)
+    await update_admin_dashboard()
+    try:
+        while True:
+            # Houdt de verbinding open en luistert naar eventuele berichten
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        if websocket in beamer_ws:
+            beamer_ws.remove(websocket)
 
 @app.websocket("/ws/admin")
 async def ws_admin(websocket: WebSocket) -> None:
     """
-    WebSocket voor de admin. Bij afsluiten wordt admin_is_bezet gereset,
-    zodat een nieuwe quizmaster kan inloggen.
+    WebSocket voor de admin. Beheert de exclusiviteit van de quizmaster-sessie.
+    Voorkomt lockouts bij het herladen van de HTTP pagina.
     """
     global admin_ws, admin_is_bezet
+    
+    if admin_is_bezet:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Er is al een quizmaster actief.")
+        return
+
     await websocket.accept()
     admin_ws = websocket
+    admin_is_bezet = True
     await update_admin_dashboard()
 
     try:
         while True:
             raw = await websocket.receive_text()
-            data = json.loads(raw)
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+                
             actie = data.get("actie")
 
             if actie == "start_quiz":
-                if quiz["vragen"]:
+                # Anti-spam: start alleen als de quiz nog in de lobby staat
+                if quiz["vragen"] and quiz["status"] == QuizState.LOBBY:
                     asyncio.create_task(start_nieuwe_vraag_proces(0))
 
             elif actie == "stop_vraag":
@@ -329,7 +331,8 @@ async def ws_admin(websocket: WebSocket) -> None:
                         try:
                             await ws.send_json(resultaat_data)
                         except Exception:
-                            beamer_ws.remove(ws)
+                            if ws in beamer_ws:
+                                beamer_ws.remove(ws)
 
                     await update_admin_dashboard()
 
@@ -351,7 +354,8 @@ async def ws_admin(websocket: WebSocket) -> None:
                             try:
                                 await ws.send_json(eind_data)
                             except Exception:
-                                beamer_ws.remove(ws)
+                                if ws in beamer_ws:
+                                    beamer_ws.remove(ws)
                     await update_admin_dashboard()
 
             elif actie == "reset":
@@ -363,7 +367,6 @@ async def ws_admin(websocket: WebSocket) -> None:
 
     except WebSocketDisconnect:
         admin_ws = None
-        # Geef de admin-plek vrij zodat een nieuwe quizmaster kan inloggen
         admin_is_bezet = False
 
 if __name__ == "__main__":
