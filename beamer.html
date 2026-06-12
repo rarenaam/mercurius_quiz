@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
@@ -25,241 +24,483 @@
       --muted:     #64748b;
       --font-ui:   'Space Grotesk', sans-serif;
       --font-mono: 'Space Mono', monospace;
-
-      /* Kahoot Kleuren */
       --kh-red:    #e21b3c;
       --kh-blue:   #1368ce;
       --kh-yellow: #d89e00;
       --kh-green:  #26890c;
     }
 
-    body {
-      background: var(--bg); color: var(--text); font-family: var(--font-ui);
-      min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;
-      padding: 2rem; overflow: hidden;
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      overflow: hidden;
     }
 
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+    }
+
+    /* ── Sterrenhemel ──────────────────────────────────────────────── */
+    #sterren {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ster {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--d, 3s) ease-in-out infinite;
+      opacity: 0;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; }
+      50%       { opacity: var(--op, 0.7); }
+    }
+
+    /* Grote, trage nevel-bollen op de achtergrond */
+    .nevel {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(80px);
+      animation: nebelDrift var(--nd, 20s) ease-in-out infinite alternate;
+    }
+    @keyframes nebelDrift {
+      0%   { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(var(--dx, 20px), var(--dy, 15px)) scale(1.05); }
+    }
+
+    /* ── Inhoud boven sterren ───────────────────────────────────────── */
     .beamer-container {
-      width: 100%; max-width: 1100px; text-align: center; display: flex; flex-direction: column; gap: 2rem;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1100px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
     }
 
     .vraag-titel {
-      font-size: 2.5rem; font-weight: 700; line-height: 1.3; min-height: 80px;
-      color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 700;
+      line-height: 1.3;
+      min-height: 72px;
+      color: white;
+      text-shadow: 0 2px 20px rgba(79, 142, 247, 0.4);
     }
 
-    /* Antwoordopties Grid */
-    .antwoord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; width: 100%; }
+    /* ── Antwoordgrid ──────────────────────────────────────────────── */
+    .antwoord-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.1rem;
+      width: 100%;
+    }
+
     .vlak {
-      padding: 2rem; border-radius: 0.75rem; color: white; font-weight: 700; text-align: left;
-      font-size: 1.6rem; opacity: 0.9; border: 6px solid transparent; transition: all 0.25s ease;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      padding: 1.75rem;
+      border-radius: 0.85rem;
+      color: white;
+      font-weight: 700;
+      text-align: left;
+      font-size: clamp(1.1rem, 2vw, 1.6rem);
+      opacity: 0.9;
+      border: 5px solid transparent;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      /* Subtiele glinstering boven de kleur */
+      background-clip: padding-box;
     }
-    .vlak.correct { border: 6px solid white; opacity: 1; box-shadow: 0 0 30px white; transform: scale(1.02); }
-    .vlak.incorrect { opacity: 0.2; transform: scale(0.98); filter: blur(1px); }
-    .v1 { background: var(--kh-red); } .v2 { background: var(--kh-blue); } .v3 { background: var(--kh-yellow); } .v4 { background: var(--kh-green); }
 
-    /* Live Grafiek Box */
-    .chart-box { max-width: 550px; width: 100%; margin: 0 auto; background: var(--surface); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+    .vlak.correct {
+      border-color: white;
+      opacity: 1;
+      box-shadow: 0 0 40px rgba(255,255,255,0.3);
+      transform: scale(1.02);
+    }
 
-    /* 3D Podium */
-    @keyframes growPodium { from { height: 0px; } }
-    .podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 1.5rem; margin: 2rem auto 0 auto; height: 240px; width: 100%; max-width: 600px; }
-    .podium-column { display: flex; flex-direction: column; align-items: center; flex: 1; text-align: center; }
+    .vlak.incorrect {
+      opacity: 0.18;
+      transform: scale(0.98);
+      filter: blur(1px);
+    }
+
+    .v1 { background: var(--kh-red);    box-shadow: 0 4px 20px rgba(226,27,60,0.35); }
+    .v2 { background: var(--kh-blue);   box-shadow: 0 4px 20px rgba(19,104,206,0.35); }
+    .v3 { background: var(--kh-yellow); box-shadow: 0 4px 20px rgba(216,158,0,0.35); }
+    .v4 { background: var(--kh-green);  box-shadow: 0 4px 20px rgba(38,137,12,0.35); }
+
+    /* ── Grafiek ───────────────────────────────────────────────────── */
+    .chart-box {
+      max-width: 520px;
+      width: 100%;
+      margin: 0 auto;
+      background: rgba(14, 22, 41, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 1.25rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* ── Podium ────────────────────────────────────────────────────── */
+    @keyframes growPodium {
+      from { height: 0; }
+    }
+
+    .podium-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 1.5rem;
+      margin: 1.5rem auto 0;
+      height: 230px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .podium-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      text-align: center;
+    }
+
     .podium-bar {
-      width: 100%; border-top-left-radius: 0.8rem; border-top-right-radius: 0.8rem;
-      display: flex; justify-content: center; align-items: center; font-size: 2.2rem; font-weight: bold; color: #02060f;
+      width: 100%;
+      border-top-left-radius: 0.8rem;
+      border-top-right-radius: 0.8rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #02060f;
       animation: growPodium 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
-    .podium-1 { height: 170px; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); }
-    .podium-2 { height: 120px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
-    .podium-3 { height: 85px; background: linear-gradient(135deg, #b45309, #78350f); }
-    .podium-name { font-size: 1.3rem; font-weight: 700; color: white; margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
-    .podium-score { font-size: 1.1rem; font-family: var(--font-mono); color: var(--accent2); margin-top: 0.5rem; font-weight: 700; }
 
-    /* Footer Info */
-    .beamer-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border); width: 100%; }
-    .timer { font-size: 2.2rem; font-family: var(--font-mono); color: var(--accent); font-weight: 700; }
-    .teller { font-size: 1.2rem; color: var(--muted); font-weight: 500; }
-    .lobby-code { font-size: 1.5rem; font-weight: 600; color: var(--accent2); }
+    .podium-1 { height: 165px; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 35px rgba(245,158,11,0.5); }
+    .podium-2 { height: 115px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+    .podium-3 { height: 80px;  background: linear-gradient(135deg, #b45309, #78350f); }
+
+    .podium-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+    }
+
+    .podium-score {
+      font-size: 1rem;
+      font-family: var(--font-mono);
+      color: var(--accent2);
+      margin-top: 0.4rem;
+      font-weight: 700;
+    }
+
+    /* ── Footer ────────────────────────────────────────────────────── */
+    .beamer-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      width: 100%;
+    }
+
+    .timer {
+      font-size: 2rem;
+      font-family: var(--font-mono);
+      color: var(--accent);
+      font-weight: 700;
+      transition: color 0.3s;
+      min-width: 80px;
+      text-align: left;
+    }
+
+    .timer.kritiek {
+      color: var(--kh-red);
+      animation: timerKnip 0.5s ease-in-out infinite;
+    }
+
+    @keyframes timerKnip {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .teller     { font-size: 1.1rem; color: var(--muted); font-weight: 500; }
+    .lobby-code { font-size: 1.3rem; font-weight: 600; color: var(--accent2); min-width: 80px; text-align: right; }
+    /* ── Zon ───────────────────────────────────────────────────────── */
+    #zon-canvas {
+      position: fixed;
+      bottom: -120px;
+      right: -80px;
+      width: 420px;
+      height: 420px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.55;
+    }
   </style>
 </head>
 <body>
 
+<!-- Sterrenhemel achtergrond -->
+<div id="sterren"></div>
+
+<!-- Gloeiende zon rechtsonder -->
+<canvas id="zon-canvas"></canvas>
+
 <div class="beamer-container">
-  <div class="vraag-titel" id="display-vraag">Wachten op de quizmaster...</div>
+  <div class="vraag-titel" id="display-vraag">Wachten op de quizmaster…</div>
 
   <div class="antwoord-grid" id="display-grid">
-    <div class="vlak v1" id="optie0">▲ Rood Vlak</div>
-    <div class="vlak v2" id="optie1">⬢ Blauw Vlak</div>
-    <div class="vlak v3" id="optie2">● Geel Vlak</div>
-    <div class="vlak v4" id="optie3">■ Groen Vlak</div>
+    <div class="vlak v1" id="optie0">▲ Rood vlak</div>
+    <div class="vlak v2" id="optie1">⬢ Blauw vlak</div>
+    <div class="vlak v3" id="optie2">● Geel vlak</div>
+    <div class="vlak v4" id="optie3">■ Groen vlak</div>
   </div>
 
-  <div class="chart-box" id="chart-box" style="display: none;">
+  <div class="chart-box" id="chart-box" style="display:none;">
     <canvas id="uitslagChart"></canvas>
   </div>
 
-  <div id="podium-view" style="display: none; flex-direction: column; align-items: center; width: 100%;"></div>
+  <div id="podium-view" style="display:none; flex-direction:column; align-items:center; width:100%;"></div>
 
   <div class="beamer-footer">
-    <div class="lobby-code" id="display-lobby-info">http://127.0.0.1:8000!</div>
     <div class="timer" id="display-timer"></div>
     <div class="teller" id="display-teller"></div>
+    <div class="lobby-code" id="display-lobby-info"></div>
   </div>
 </div>
 
 <script>
+  /* ── Sterrenhemel genereren ──────────────────────────────────────── */
+  (function maakSterren() {
+    const container = document.getElementById("sterren");
+
+    // Nevels (grote, vage gloeiende bollen)
+    const nevels = [
+      { w: 500, h: 400, top: "5%",  left: "60%", kleur: "rgba(79,142,247,0.06)",  nd: "25s", dx: "30px",  dy: "20px" },
+      { w: 400, h: 350, top: "50%", left: "5%",  kleur: "rgba(167,139,250,0.05)", nd: "30s", dx: "-20px", dy: "25px" },
+      { w: 300, h: 300, top: "70%", left: "70%", kleur: "rgba(79,142,247,0.04)",  nd: "20s", dx: "15px",  dy: "-20px" },
+    ];
+
+    nevels.forEach(n => {
+      const el = document.createElement("div");
+      el.className = "nevel";
+      el.style.cssText = `
+        width:${n.w}px; height:${n.h}px;
+        top:${n.top}; left:${n.left};
+        background:${n.kleur};
+        --nd:${n.nd}; --dx:${n.dx}; --dy:${n.dy};
+      `;
+      container.appendChild(el);
+    });
+
+    // Sterren (veel meer op een beamerscherm)
+    for (let i = 0; i < 220; i++) {
+      const s = document.createElement("div");
+      s.className = "ster";
+      const size = Math.random() * 2.8 + 0.4;
+      s.style.cssText = `
+        width:${size}px; height:${size}px;
+        top:${Math.random() * 100}%; left:${Math.random() * 100}%;
+        --d:${(Math.random() * 5 + 2).toFixed(1)}s;
+        --op:${(Math.random() * 0.7 + 0.2).toFixed(2)};
+        animation-delay:${(Math.random() * 6).toFixed(1)}s;
+      `;
+      container.appendChild(s);
+    }
+  })();
+
+  /* ── State ──────────────────────────────────────────────────────── */
   let ws;
   let countdownInterval;
   let chartInstance = null;
+  let actieveTijdLimiet = 0;
 
+  /* ── WebSocket Verbinding ───────────────────────────────────────── */
   function verbinden() {
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    // We verbinden als een 'beamer' client
     ws = new WebSocket(`${protocol}//${location.host}/ws/beamer`);
 
-    ws.onopen = () => { console.log("Beamer scherm verbonden met server."); };
-
+    ws.onopen  = () => console.log("Beamer verbonden.");
     ws.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      verwerkBericht(data);
+      try { verwerkBericht(JSON.parse(e.data)); }
+      catch(err) { console.error("Ongeldig bericht:", err); }
     };
-
     ws.onclose = () => {
       clearInterval(countdownInterval);
       setTimeout(verbinden, 2000);
     };
   }
 
+  /* ── Berichtenverwerking ────────────────────────────────────────── */
   function verwerkBericht(data) {
-    // 1. Algemene Status Synchronisatie
+
     if (data.actie === "status_update") {
       if (data.status === "lobby") {
         document.getElementById("display-vraag").textContent = "🚀 Welkom bij Mercurius Quiz! 🔭";
-        document.getElementById("display-lobby-info").textContent = `Ga naar de website en vul je naam in!`;
+        document.getElementById("display-lobby-info").textContent = `${location.host}`;
         document.getElementById("display-teller").textContent = `Deelnemers in lobby: ${data.spelers.length}`;
-        document.getElementById("display-grid").style.display = "grid";
-        document.getElementById("chart-box").style.display = "none";
-        document.getElementById("podium-view").style.display = "none";
+        document.getElementById("display-grid").style.display  = "grid";
+        document.getElementById("chart-box").style.display     = "none";
+        document.getElementById("podium-view").style.display   = "none";
+        document.getElementById("display-timer").textContent   = "";
+        document.getElementById("display-timer").classList.remove("kritiek");
         resetVlakken();
       }
+
       if (data.status === "vraag_actief") {
-        document.getElementById("display-teller").textContent = `Ingezonden: ${data.aantal_antwoorden} / ${data.spelers.length}`;
+        document.getElementById("display-teller").textContent =
+          `Antwoorden: ${data.aantal_antwoorden} / ${data.spelers.length}`;
       }
     }
 
-    // 2. Vraag start
     if (data.actie === "toon_vraag") {
       clearInterval(countdownInterval);
+      actieveTijdLimiet = Number(data.tijd);
 
-      document.getElementById("display-grid").style.display = "grid";
-      document.getElementById("chart-box").style.display = "none";
-      document.getElementById("podium-view").style.display = "none";
+      document.getElementById("display-grid").style.display  = "grid";
+      document.getElementById("chart-box").style.display     = "none";
+      document.getElementById("podium-view").style.display   = "none";
       document.getElementById("display-lobby-info").textContent = "";
       resetVlakken();
 
-      document.getElementById("display-vraag").textContent = data.vraag;
-      document.getElementById("optie0").textContent = "▲ " + data.opties[0];
-      document.getElementById("optie1").textContent = "⬢ " + data.opties[1];
-      document.getElementById("optie2").textContent = "● " + data.opties[2];
-      document.getElementById("optie3").textContent = "■ " + data.opties[3];
-      document.getElementById("display-timer").textContent = `⌛`;
-      document.getElementById("display-teller").textContent = "Bereid je voor...";
+      document.getElementById("display-vraag").textContent  = data.vraag;
+      document.getElementById("optie0").textContent = "▲ " + (data.opties[0] || "");
+      document.getElementById("optie1").textContent = "⬢ " + (data.opties[1] || "");
+      document.getElementById("optie2").textContent = "● " + (data.opties[2] || "");
+      document.getElementById("optie3").textContent = "■ " + (data.opties[3] || "");
+
+      setTimer(`⌛ ${actieveTijdLimiet}s`, false);
+      document.getElementById("display-teller").textContent = "Bereid je voor…";
     }
 
-    // 3. Timer gaat lopen
     if (data.actie === "timer_loopt") {
-      let seconden = data.tijd || 20;
+      let seconden = actieveTijdLimiet;
       clearInterval(countdownInterval);
       countdownInterval = setInterval(() => {
         seconden--;
-        document.getElementById("display-timer").textContent = `${seconden}s`;
+        setTimer(`${seconden}s`, seconden <= 5);
         if (seconden <= 0) clearInterval(countdownInterval);
       }, 1000);
     }
 
-    // 4. Vraag afgelopen (Uitslag & Juiste antwoord)
     if (data.actie === "vraag_uitslag") {
       clearInterval(countdownInterval);
-      document.getElementById("display-timer").textContent = "🛑";
+      setTimer("🛑", false);
+      document.getElementById("display-teller").textContent = "Ronde afgelopen!";
 
-      // Vlakken filteren: Licht het goede antwoord op, vervaag de rest
       document.querySelectorAll('.vlak').forEach((v, idx) => {
-        if (idx === data.correct_index) {
-          v.classList.add('correct');
-        } else {
-          v.classList.add('incorrect');
-        }
+        v.classList.remove('correct', 'incorrect');
+        v.classList.add(idx === data.correct_index ? 'correct' : 'incorrect');
       });
 
-      // Grafiek genereren
-      let counts = [0, 0, 0, 0];
+      const counts = [0, 0, 0, 0];
       if (data.antwoorden) {
-        Object.values(data.antwoorden).forEach(a => { if (a.optie >= 0 && a.optie <= 3) counts[a.optie]++; });
+        Object.values(data.antwoorden).forEach(a => {
+          if (a.optie >= 0 && a.optie <= 3) counts[a.optie]++;
+        });
       }
       tekenGrafiek(counts);
     }
 
-    // 5. Quiz Afgelopen (Eindpodium 🎉)
     if (data.actie === "eind_uitslag") {
       clearInterval(countdownInterval);
-      document.getElementById("display-vraag").textContent = "👑 EINDRESULTAAT PODIUM 👑";
-      document.getElementById("display-timer").textContent = "";
+      document.getElementById("display-vraag").textContent = "👑 Eindresultaat Podium 👑";
+      setTimer("", false);
       document.getElementById("display-teller").textContent = "";
-
-      document.getElementById("display-grid").style.display = "none";
-      document.getElementById("chart-box").style.display = "none";
+      document.getElementById("display-grid").style.display  = "none";
+      document.getElementById("chart-box").style.display     = "none";
 
       const podiumView = document.getElementById("podium-view");
       podiumView.style.display = "flex";
+      podiumView.innerHTML = bouwPodiumHtml(data.ranking);
 
-      // Confetti!
       confetti({ particleCount: 180, spread: 90, origin: { y: 0.6 } });
-
-      // Bouw visueel podium
-      let html = '<div class="podium-container">';
-      if (data.ranking[1]) { // Nr 2
-        html += `
-          <div class="podium-column" style="order:1">
-            <div class="podium-name">${esc(data.ranking[1].naam)}</div>
-            <div class="podium-bar podium-2">🥈</div>
-            <div class="podium-score">${data.ranking[1].score} pt</div>
-          </div>`;
-      }
-      if (data.ranking[0]) { // Nr 1
-        html += `
-          <div class="podium-column" style="order:2">
-            <div class="podium-name">${esc(data.ranking[0].naam)}</div>
-            <div class="podium-bar podium-1">🥇</div>
-            <div class="podium-score">${data.ranking[0].score} pt</div>
-          </div>`;
-      }
-      if (data.ranking[2]) { // Nr 3
-        html += `
-          <div class="podium-column" style="order:3">
-            <div class="podium-name">${esc(data.ranking[2].naam)}</div>
-            <div class="podium-bar podium-3">🥉</div>
-            <div class="podium-score">${data.ranking[2].score} pt</div>
-          </div>`;
-      }
-      html += '</div>';
-      podiumView.innerHTML = html;
     }
   }
 
+  /* ── Timer Helper ───────────────────────────────────────────────── */
+  function setTimer(tekst, kritiek) {
+    const el = document.getElementById("display-timer");
+    el.textContent = tekst;
+    el.classList.toggle("kritiek", kritiek);
+  }
+
+  /* ── Podium HTML Builder ────────────────────────────────────────── */
+  function bouwPodiumHtml(ranking) {
+    if (!ranking || !ranking.length) return `<p style="color:var(--muted)">Geen deelnemers</p>`;
+
+    const plekken = [
+      { data: ranking[1], klasse: "podium-2", icon: "🥈", order: 1 },
+      { data: ranking[0], klasse: "podium-1", icon: "🥇", order: 2 },
+      { data: ranking[2], klasse: "podium-3", icon: "🥉", order: 3 },
+    ];
+
+    let html = '<div class="podium-container">';
+    plekken.forEach(({ data, klasse, icon, order }) => {
+      if (!data) return;
+      html += `
+        <div class="podium-column" style="order:${order}">
+          <div class="podium-name" title="${esc(data.naam)}">${esc(data.naam)}</div>
+          <div class="podium-bar ${klasse}">${icon}</div>
+          <div class="podium-score">${data.score} pt</div>
+        </div>`;
+    });
+    html += "</div>";
+
+    // Plek 4 & 5
+    if (ranking.length > 3) {
+      html += '<div style="margin-top:1.25rem; width:100%; max-width:420px; display:flex; flex-direction:column; gap:0.4rem;">';
+      ranking.slice(3, 5).forEach((s, i) => {
+        html += `
+          <div style="display:flex; justify-content:space-between; background:rgba(14,22,41,0.8); backdrop-filter:blur(6px); padding:0.5rem 1rem; border-radius:0.5rem; font-size:1rem; border:1px solid var(--border);">
+            <span style="font-weight:600;">#${i + 4} ${esc(s.naam)}</span>
+            <span style="color:var(--accent2); font-weight:700; font-family:var(--font-mono);">${s.score} pt</span>
+          </div>`;
+      });
+      html += "</div>";
+    }
+
+    return html;
+  }
+
+  /* ── Chart.js ───────────────────────────────────────────────────── */
   function tekenGrafiek(counts) {
     document.getElementById("chart-box").style.display = "block";
-    const ctx = document.getElementById('uitslagChart').getContext('2d');
+    const ctx = document.getElementById("uitslagChart").getContext("2d");
     if (chartInstance) chartInstance.destroy();
 
     chartInstance = new Chart(ctx, {
-      type: 'bar',
+      type: "bar",
       data: {
-        labels: ['▲ Rood', '⬢ Blauw', '● Geel', '■ Groen'],
+        labels: ["▲ Rood", "⬢ Blauw", "● Geel", "■ Groen"],
         datasets: [{
           data: counts,
-          backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
+          backgroundColor: ["#e21b3c", "#1368ce", "#d89e00", "#26890c"],
           borderRadius: 6
         }]
       },
@@ -267,22 +508,33 @@
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' }, grid: { color: '#1e2d4d' } },
-          x: { ticks: { color: '#e2e8f0', font: { weight: 'bold', size: 14 } }, grid: { display: false } }
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, color: "#64748b" },
+            grid: { color: "#1e2d4d" }
+          },
+          x: {
+            ticks: { color: "#e2e8f0", font: { weight: "bold", size: 14 } },
+            grid: { display: false }
+          }
         }
       }
     });
   }
 
+  /* ── Helpers ────────────────────────────────────────────────────── */
   function resetVlakken() {
-    document.querySelectorAll('.vlak').forEach(v => {
-      v.className = v.className.replace('correct', '').replace('incorrect', '').trim();
-    });
+    document.querySelectorAll('.vlak').forEach(v => v.classList.remove('correct', 'incorrect'));
   }
 
   function esc(str) {
-    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return String(str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+
+    frame();
+  })();
 
   verbinden();
 </script>
